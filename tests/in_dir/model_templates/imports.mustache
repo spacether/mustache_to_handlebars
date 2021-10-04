@@ -1,0 +1,47 @@
+from {{packageName}}.model_utils import (  # noqa: F401
+    AnyTypeSchema,
+    ComposedSchema,
+    DictSchema,
+    ListSchema,
+    StrSchema,
+    IntSchema,
+    Int32Schema,
+    Int64Schema,
+    Float32Schema,
+    Float64Schema,
+    NumberSchema,
+    DateSchema,
+    DateTimeSchema,
+    BoolSchema,
+    FileSchema,
+    NoneSchema,
+    NullableDictSchema,
+    NullableListSchema,
+    NullableStrSchema,
+    NullableIntSchema,
+    NullableFloatSchema,
+    NullableNumberSchema,
+    NullableDateSchema,
+    NullableDateTimeSchema,
+    NullableBoolSchema,
+    NullableFileSchema,
+    none_type,
+    InstantiationMetadata,
+    Unset,
+    unset,
+    Schema
+){{#imports}}{{#-first}}
+
+
+def lazy_import() -> typing.Dict[str, typing.Type[Schema]]:
+    zzz_class_name_to_class = {}
+    {{{.}}}
+{{/-first}}
+{{^-first}}
+{{^-last}}
+    {{{.}}}
+{{/-last}}
+{{/-first}}
+{{#-last}}
+    {{{.}}}
+    return zzz_class_name_to_class{{/-last}}{{/imports}}
