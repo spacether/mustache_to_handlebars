@@ -64,19 +64,19 @@ class TestHelpers(unittest.TestCase):
         out_txt = main._convert_handlebars_to_mustache(in_txt)
         expected_out_txt = '\n'.join([
             '{{#a}}{{#b}}',
-            '{{#someList}}',
-            '  {{#otherList}}',
-            '{{#if @first}}',
-            '{{/if}}',
-            '{{#if @last}}',
-            '{{/if}}',
-            '{{#unless @first}}',
-            '{{/unless}}',
-            '{{#unless @last}}',
-            '{{/unless}}',
+            '{{#someList~}}',
+            '  {{#otherList~}}',
+            '{{#if @first~}}',
+            '{{/if~}}',
+            '{{#if @last~}}',
+            '{{/if~}}',
+            '{{#unless @first~}}',
+            '{{/unless~}}',
+            '{{#unless @last~}}',
+            '{{/unless~}}',
             '{{/b}}{{/a}}',
-            '  {{/otherList}}',
-            '{{/someList}}'
+            '  {{/otherList~}}',
+            '{{/someList~}}'
         ])
         self.assertEqual(
             out_txt, expected_out_txt)

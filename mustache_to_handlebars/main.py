@@ -13,6 +13,7 @@ HANDLBARS_UNLESS_FIRST_TAG = '{{#unless @first}}'
 HANDLBARS_UNLESS_LAST_TAG = '{{#unless @last}}'
 HANDLBARS_IF_CLOSE = '{{/if}}'
 HANDLBARS_UNLESS_CLOSE = '{{/unless}}'
+HANDLEBARS_WHITESPACE_REMOVAL_CHAR = '~'
 
 REPLACEMENTS = {
     '{{#-first}}': HANDLBARS_IF_FIRST_TAG,
@@ -57,7 +58,7 @@ def _get_in_file_to_out_file_map(in_dir: str, out_dir: str, recursive: bool) -> 
     return in_path_to_out_path
 
 
-def __replace_first_or_last_close_tag(tag_to_replace: str, if_open_tag: str, unless_open_tag: str, in_txt: str):
+def __replace_first_or_last_close_tag(tag_to_replace: str, if_open_tag: str, unless_open_tag: str, in_txt: str) -> str:
     txt_pieces = in_txt.split(tag_to_replace)
     out_txt = ''
     for i, txt_piece in enumerate(txt_pieces):
@@ -73,7 +74,30 @@ def __replace_first_or_last_close_tag(tag_to_replace: str, if_open_tag: str, unl
             out_txt += HANDLBARS_UNLESS_CLOSE
     return out_txt
 
-def _convert_handlebars_to_mustache(in_txt: str):
+def _add_whitespace_handling(in_txt: str) -> str:
+    lines = in_txt.split('\n')
+    for i, line in enumerate(lines):
+        left_brace_count = line.count('{')
+        right_brace_count = line.count('{')
+        if left_brace_count != right_brace_count:
+            continue
+        if left_brace_count <= 1 or left_brace_count > 3:
+            continue
+        tag_open_count = line.count('{'*left_brace_count)
+        if not tag_open_count:
+            continue
+        end_braces = '}'*left_brace_count
+        tag_close_count = line.count(end_braces)
+        if not tag_close_count:
+            continue
+        # there is only one tag on this line
+        suffix = line[-left_brace_count:]
+        if suffix == end_braces:
+            lines[i] = line[:-left_brace_count] + HANDLEBARS_WHITESPACE_REMOVAL_CHAR + suffix
+    return '\n'.join(lines)
+
+
+def _convert_handlebars_to_mustache(in_txt: str) -> str:
     out_txt = str(in_txt)
     for original_tag, new_tag in REPLACEMENTS.items():
         out_txt = out_txt.replace(original_tag, new_tag)
@@ -81,6 +105,7 @@ def _convert_handlebars_to_mustache(in_txt: str):
         MUSTACHE_FIRST_CLOSE_TAG, HANDLBARS_IF_FIRST_TAG, HANDLBARS_UNLESS_FIRST_TAG, out_txt)
     out_txt = __replace_first_or_last_close_tag(
         MUSTACHE_LAST_CLOSE_TAG, HANDLBARS_IF_LAST_TAG, HANDLBARS_UNLESS_LAST_TAG, out_txt)
+    out_txt = _add_whitespace_handling(out_txt)
     return out_txt
 
 def _create_files(in_path_to_out_path: dict):
