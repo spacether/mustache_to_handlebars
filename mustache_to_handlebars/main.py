@@ -15,7 +15,7 @@ def dir_path(string):
 def __get_args():
     parser = argparse.ArgumentParser(description='convert templates from mustache to handebars')
     parser.add_argument('in_dir', type=dir_path)
-    parser.add_argument('-out_dir', type=dir_path)
+    parser.add_argument('-out_dir', type=str)
     parser.add_argument('-recursive', type=bool, default=True)
     parser.add_argument('-delete_in_files', type=bool, default=False)
     args = parser.parse_args()
@@ -39,6 +39,7 @@ def _get_in_file_to_out_file_map(in_dir: str, out_dir: str, recursive: bool) -> 
     return in_path_to_out_path
 
 def _create_files(in_path_to_out_path: dict):
+    existing_out_folders = set()
     for i, (in_path, out_path) in enumerate(in_path_to_out_path.items()):
         print('Reading file {} out of {}, path={}'.format(i+1, len(in_path_to_out_path), in_path))
         with open(in_path) as file:
@@ -46,6 +47,12 @@ def _create_files(in_path_to_out_path: dict):
             lines = [line.rstrip() for line in lines]
 
         full_txt = '\n'.join(lines)
+        out_folder = os.path.dirname(out_path)
+        if out_folder not in existing_out_folders:
+            if not os.path.isdir(out_folder):
+                os.mkdir(out_folder)
+            existing_out_folders.add(out_folder)
+
         with open(out_path, 'w') as file:
             file.write(full_txt)
         print('Wrote file {}'.format(out_path))

@@ -1,3 +1,4 @@
+import glob
 import os
 import unittest
 
@@ -31,6 +32,16 @@ class TestHelpers(unittest.TestCase):
             }
         )
 
+    def test_create_files(self):
+        in_file_to_out_file_map = main._get_in_file_to_out_file_map(
+            in_dir=self.in_dir, out_dir=self.in_dir, recursive=False)
+        main._create_files(in_file_to_out_file_map)
+        in_handebars_path_pattern = os.path.join('tests', 'in_dir', '*.{}'.format(main.HANDLEBARS_EXTENSION))
+        handlebars_files = glob.glob(in_handebars_path_pattern, recursive=False)
+        self.assertEqual(
+            set(in_file_to_out_file_map.values()),
+            set(handlebars_files)
+        )
 
 if __name__ == '__main__':
     unittest.main()
