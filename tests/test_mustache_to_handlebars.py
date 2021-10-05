@@ -42,6 +42,40 @@ class TestHelpers(unittest.TestCase):
             set(in_file_to_out_file_map.values()),
             set(handlebars_files)
         )
+        main._clean_up_files(handlebars_files)
+
+    def test_convert_handlebars_to_mustache(self):
+        in_txt = '\n'.join([
+            '{{#a}}{{#b}}',
+            '{{#someList}}',
+            '{{#-first}}',
+            '{{/-first}}',
+            '{{#-last}}',
+            '{{/-last}}',
+            '{{^-first}}',
+            '{{/-first}}',
+            '{{^-last}}',
+            '{{/-last}}',
+            '{{/b}}{{/a}}',
+            '{{/someList}}'
+        ])
+        out_txt = main._convert_handlebars_to_mustache(in_txt)
+        expected_out_txt = '\n'.join([
+            '{{#a}}{{#b}}',
+            '{{#someList}}',
+            '{{#if @first}}',
+            '{{/if}}',
+            '{{#if @last}}',
+            '{{/if}}',
+            '{{#unless @first}}',
+            '{{/unless}}',
+            '{{#unless @last}}',
+            '{{/unless}}',
+            '{{/b}}{{/a}}',
+            '{{/someList}}'
+        ])
+        self.assertEqual(
+            out_txt, expected_out_txt)
 
 if __name__ == '__main__':
     unittest.main()
