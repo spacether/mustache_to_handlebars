@@ -17,4 +17,4 @@ install:
 	pip3 install .
 
 test:
-	pytest tests/
+	python -m pytest

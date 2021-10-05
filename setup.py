@@ -13,4 +13,5 @@ setup(name='mustache_to_handlebars',
                   'mustache_to_handlebars=mustache_to_handlebars.main:mustache_to_handlebars'
             ],
       },
+      python_requires='>=3',
 )

@@ -21,8 +21,13 @@ def __get_args():
     args = parser.parse_args()
     return args.in_dir, args.out_dir, args.recursive, args.delete_in_files
 
-def __get_in_file_to_out_file_map(in_dir: str, out_dir: str, recursive: bool) -> dict:
-    in_dir_mustache_path_pattern = os.path.join(in_dir, '**', '*.{}'.format(MUSTACHE_EXTENSION))
+def _get_in_file_to_out_file_map(in_dir: str, out_dir: str, recursive: bool) -> dict:
+    path_args = []
+    if recursive:
+        path_args.append('**')
+    path_args.append('*.{}'.format(MUSTACHE_EXTENSION))
+    in_dir_mustache_path_pattern = os.path.join(in_dir, *path_args)
+
     mustache_files = glob.glob(in_dir_mustache_path_pattern, recursive=recursive)
 
     in_path_to_out_path = {}
@@ -33,7 +38,7 @@ def __get_in_file_to_out_file_map(in_dir: str, out_dir: str, recursive: bool) ->
         in_path_to_out_path[full_path] = out_path
     return in_path_to_out_path
 
-def __create_files(in_path_to_out_path: dict):
+def _create_files(in_path_to_out_path: dict):
     for i, (in_path, out_path) in enumerate(in_path_to_out_path.items()):
         print('Reading file {} out of {}, path={}'.format(i+1, len(in_path_to_out_path), in_path))
         with open(in_path) as file:
@@ -59,6 +64,6 @@ def mustache_to_handlebars():
     if not out_dir:
         out_dir = in_dir
 
-    in_path_to_out_path = __get_in_file_to_out_file_map(in_dir, out_dir, recursive)
-    __create_files(in_path_to_out_path)
+    in_path_to_out_path = _get_in_file_to_out_file_map(in_dir, out_dir, recursive)
+    _create_files(in_path_to_out_path)
     __clean_up_files(in_path_to_out_path, delete_in_files)
