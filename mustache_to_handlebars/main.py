@@ -2,34 +2,36 @@ import os
 import argparse
 import glob
 import typing
+import re
+from enum import Enum
 
 
 MUSTACHE_EXTENSION = 'mustache'
-MUSTACHE_FIRST_CLOSE = '{{/-first}}'
-MUSTACHE_LAST_CLOSE = '{{/-last}}'
-MUSTACHE_IF_FIRST = '{{#-first}}'
-MUSTACHE_IF_LAST = '{{#-last}}'
-MUSTACHE_UNLESS_FIRST = '{{^-first}}'
-MUSTACHE_UNLESS_LAST = '{{^-last}}'
+MUSTACHE_IF_UNLESS_CLOSE_PATTERN = r'{{([#^/].+?)}}'
+MUSTACHE_TO_HANDLEBARS_TAG = {
+    '-first': '@first',
+    '-last': '@last'
+}
 
 HANDLEBARS_EXTENSION = 'handlebars'
-HANDLEBARS_IF_FIRST = '{{#if @first}}'
-HANDLEBARS_IF_LAST = '{{#if @last}}'
-HANDLEBARS_UNLESS_FIRST = '{{#unless @first}}'
-HANDLEBARS_UNLESS_LAST = '{{#unless @last}}'
 HANDLEBARS_IF_CLOSE = '{{/if}}'
 HANDLEBARS_UNLESS_CLOSE = '{{/unless}}'
 HANDLEBARS_WHITESPACE_REMOVAL_CHAR = '~'
-CONTROL_CHARS = {'#', '/', '^'}
 
-REPLACEMENTS = {
-    MUSTACHE_IF_FIRST: lambda x: HANDLEBARS_IF_FIRST,
-    MUSTACHE_IF_LAST: lambda x: HANDLEBARS_IF_LAST,
-    MUSTACHE_UNLESS_FIRST: lambda x: HANDLEBARS_UNLESS_FIRST,
-    MUSTACHE_UNLESS_LAST: lambda x: HANDLEBARS_UNLESS_LAST,
-    MUSTACHE_FIRST_CLOSE: lambda x: x.pop(),  # may be replaced with '{{\if}}' OR '{{\unless}}'
-    MUSTACHE_LAST_CLOSE: lambda x: x.pop(),  # may be replaced with '{{\if}}' OR '{{\unless}}'
-}
+class MustacheTagType(str, Enum):
+    IF = '#'
+    UNLESS = '^'
+    CLOSE = '/'
+
+def mustache_to_handlebars_tag_element(mustache_tag_element: str) -> str:
+    """
+    '-first' -> '@first'
+    Input excludes the #/^ control characters
+    """
+    handlebars_tag_element = MUSTACHE_TO_HANDLEBARS_TAG.get(mustache_tag_element)
+    if handlebars_tag_element is None:
+        return mustache_tag_element
+    return handlebars_tag_element
 
 def __dir_path(string):
     if os.path.isdir(string):
@@ -82,34 +84,48 @@ def _add_whitespace_handling(in_txt: str) -> str:
             continue
         # there is only one tag on this line
         suffix = line[-left_brace_count:]
-        ends_in_closing_braces = suffix == end_braces
-        tag_is_helper = line[left_brace_count] in CONTROL_CHARS
-        if tag_is_helper and ends_in_closing_braces:
-            lines[i] = line[:-left_brace_count] + HANDLEBARS_WHITESPACE_REMOVAL_CHAR + suffix
+        line_ends_in_closing_braces = suffix == end_braces
+        try:
+            tag_type = MustacheTagType(line[left_brace_count])
+            if tag_type and line_ends_in_closing_braces:
+                lines[i] = line[:-left_brace_count] + HANDLEBARS_WHITESPACE_REMOVAL_CHAR + suffix
+        except ValueError:
+            pass
     return '\n'.join(lines)
 
-
 def _convert_handlebars_to_mustache(in_txt: str) -> str:
+    # extract all control tags from {{#someTag}} and {{/someTag}} patterns
+    tags = set(re.findall(MUSTACHE_IF_UNLESS_CLOSE_PATTERN, in_txt))
+    if not tags:
+        return in_txt
     replacement_index_to_from_to_pair = {}
     closures = []
     for i in range(len(in_txt)):
-        for original_tag, new_tag_getter_fn in REPLACEMENTS.items():
-            end_index = i + len(original_tag)
+        for tag_without_braces in tags:
+            tag_with_braces = '{{'+tag_without_braces+'}}'
+
+            end_index = i + len(tag_with_braces)
             if end_index > len(in_txt):
                 continue
-            substr = in_txt[i:i+len(original_tag)]
-            if substr == original_tag:
-                new_tag_getter_fn_input = None
-                if original_tag in {MUSTACHE_IF_FIRST, MUSTACHE_IF_LAST}:
-                    closures.append(HANDLEBARS_IF_CLOSE)
-                elif original_tag in {MUSTACHE_UNLESS_FIRST, MUSTACHE_UNLESS_LAST}:
-                    closures.append(HANDLEBARS_UNLESS_CLOSE)
-                elif original_tag in {MUSTACHE_FIRST_CLOSE, MUSTACHE_LAST_CLOSE}:
-                    new_tag_getter_fn_input = closures
+            substr = in_txt[i:i+len(tag_with_braces)]
 
-                new_tag = new_tag_getter_fn(new_tag_getter_fn_input)
-                replacement_index_to_from_to_pair[i] = (original_tag, new_tag)
+            if substr == tag_with_braces:
+                tag = tag_without_braces[1:]
+                tag = mustache_to_handlebars_tag_element(tag)
+                tag_type = MustacheTagType(tag_without_braces[0])
+
+                if tag_type is MustacheTagType.IF:
+                    new_tag = '{{#if ' + tag + '}}'
+                    closures.append(HANDLEBARS_IF_CLOSE)
+                elif tag_type is MustacheTagType.UNLESS:
+                    new_tag = '{{#unless ' + tag + '}}'
+                    closures.append(HANDLEBARS_UNLESS_CLOSE)
+                elif tag_type is MustacheTagType.CLOSE:
+                    new_tag = closures.pop()
+
+                replacement_index_to_from_to_pair[i] = (tag_with_braces, new_tag)
                 break
+
 
     out_txt = str(in_txt)
     for i, (original_tag, new_tag) in reversed(replacement_index_to_from_to_pair.items()):
