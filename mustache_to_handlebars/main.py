@@ -5,25 +5,31 @@ import typing
 
 
 MUSTACHE_EXTENSION = 'mustache'
-HANDLEBARS_EXTENSION = 'handlebars'
+MUSTACHE_FIRST_CLOSE = '{{/-first}}'
+MUSTACHE_LAST_CLOSE = '{{/-last}}'
+MUSTACHE_IF_FIRST = '{{#-first}}'
+MUSTACHE_IF_LAST = '{{#-last}}'
+MUSTACHE_UNLESS_FIRST = '{{^-first}}'
+MUSTACHE_UNLESS_LAST = '{{^-last}}'
 
-HANDLBARS_IF_FIRST_TAG = '{{#if @first}}'
-HANDLBARS_IF_LAST_TAG = '{{#if @last}}'
-HANDLBARS_UNLESS_FIRST_TAG = '{{#unless @first}}'
-HANDLBARS_UNLESS_LAST_TAG = '{{#unless @last}}'
-HANDLBARS_IF_CLOSE = '{{/if}}'
-HANDLBARS_UNLESS_CLOSE = '{{/unless}}'
+HANDLEBARS_EXTENSION = 'handlebars'
+HANDLEBARS_IF_FIRST = '{{#if @first}}'
+HANDLEBARS_IF_LAST = '{{#if @last}}'
+HANDLEBARS_UNLESS_FIRST = '{{#unless @first}}'
+HANDLEBARS_UNLESS_LAST = '{{#unless @last}}'
+HANDLEBARS_IF_CLOSE = '{{/if}}'
+HANDLEBARS_UNLESS_CLOSE = '{{/unless}}'
 HANDLEBARS_WHITESPACE_REMOVAL_CHAR = '~'
+CONTROL_CHARS = set(['#', '/', '^'])
 
 REPLACEMENTS = {
-    '{{#-first}}': HANDLBARS_IF_FIRST_TAG,
-    '{{#-last}}': HANDLBARS_IF_LAST_TAG,
-    '{{^-first}}': HANDLBARS_UNLESS_FIRST_TAG,
-    '{{^-last}}': HANDLBARS_UNLESS_LAST_TAG,
+    MUSTACHE_IF_FIRST: lambda x: HANDLEBARS_IF_FIRST,
+    MUSTACHE_IF_LAST: lambda x: HANDLEBARS_IF_LAST,
+    MUSTACHE_UNLESS_FIRST: lambda x: HANDLEBARS_UNLESS_FIRST,
+    MUSTACHE_UNLESS_LAST: lambda x: HANDLEBARS_UNLESS_LAST,
+    MUSTACHE_FIRST_CLOSE: lambda x: x.pop(),  # may be replaced with '{{\if}}' OR '{{\unless}}'
+    MUSTACHE_LAST_CLOSE: lambda x: x.pop(),  # may be replaced with '{{\if}}' OR '{{\unless}}'
 }
-
-MUSTACHE_FIRST_CLOSE_TAG = '{{/-first}}'  # may be replaced with '{{\if}}' OR '{{\unless}}'
-MUSTACHE_LAST_CLOSE_TAG = '{{/-last}}'  # may be replaced with '{{\if}}' OR '{{\unless}}'
 
 def __dir_path(string):
     if os.path.isdir(string):
@@ -58,22 +64,6 @@ def _get_in_file_to_out_file_map(in_dir: str, out_dir: str, recursive: bool) -> 
     return in_path_to_out_path
 
 
-def __replace_first_or_last_close_tag(tag_to_replace: str, if_open_tag: str, unless_open_tag: str, in_txt: str) -> str:
-    txt_pieces = in_txt.split(tag_to_replace)
-    out_txt = ''
-    for i, txt_piece in enumerate(txt_pieces):
-        out_txt += txt_piece
-        if i == len(txt_pieces) - 1 or len(txt_pieces) == 1:
-            continue
-        # look back for if or unless
-        if_index = txt_piece.find(if_open_tag)
-        unless_index = txt_piece.find(unless_open_tag)
-        if if_index > unless_index:
-            out_txt += HANDLBARS_IF_CLOSE
-        else:
-            out_txt += HANDLBARS_UNLESS_CLOSE
-    return out_txt
-
 def _add_whitespace_handling(in_txt: str) -> str:
     lines = in_txt.split('\n')
     for i, line in enumerate(lines):
@@ -92,19 +82,39 @@ def _add_whitespace_handling(in_txt: str) -> str:
             continue
         # there is only one tag on this line
         suffix = line[-left_brace_count:]
-        if suffix == end_braces:
+        ends_in_closing_braces = suffix == end_braces
+        tag_is_helper = line[left_brace_count] in CONTROL_CHARS
+        if tag_is_helper and ends_in_closing_braces:
             lines[i] = line[:-left_brace_count] + HANDLEBARS_WHITESPACE_REMOVAL_CHAR + suffix
     return '\n'.join(lines)
 
 
 def _convert_handlebars_to_mustache(in_txt: str) -> str:
+    replacement_index_to_from_to_pair = {}
+    closures = []
+    for i in range(len(in_txt)):
+        for original_tag, new_tag_getter_fn in REPLACEMENTS.items():
+            end_index = i + len(original_tag)
+            if end_index > len(in_txt):
+                continue
+            substr = in_txt[i:i+len(original_tag)]
+            if substr == original_tag:
+                new_tag_getter_fn_input = None
+                if original_tag in {MUSTACHE_IF_FIRST, MUSTACHE_IF_LAST}:
+                    closures.append(HANDLEBARS_IF_CLOSE)
+                elif original_tag in {MUSTACHE_UNLESS_FIRST, MUSTACHE_UNLESS_LAST}:
+                    closures.append(HANDLEBARS_UNLESS_CLOSE)
+                elif original_tag in {MUSTACHE_FIRST_CLOSE, MUSTACHE_LAST_CLOSE}:
+                    new_tag_getter_fn_input = closures
+
+                new_tag = new_tag_getter_fn(new_tag_getter_fn_input)
+                replacement_index_to_from_to_pair[i] = (original_tag, new_tag)
+                break
+
     out_txt = str(in_txt)
-    for original_tag, new_tag in REPLACEMENTS.items():
-        out_txt = out_txt.replace(original_tag, new_tag)
-    out_txt = __replace_first_or_last_close_tag(
-        MUSTACHE_FIRST_CLOSE_TAG, HANDLBARS_IF_FIRST_TAG, HANDLBARS_UNLESS_FIRST_TAG, out_txt)
-    out_txt = __replace_first_or_last_close_tag(
-        MUSTACHE_LAST_CLOSE_TAG, HANDLBARS_IF_LAST_TAG, HANDLBARS_UNLESS_LAST_TAG, out_txt)
+    for i, (original_tag, new_tag) in reversed(replacement_index_to_from_to_pair.items()):
+        out_txt = out_txt[0:i] + new_tag + out_txt[i+len(original_tag):]
+
     out_txt = _add_whitespace_handling(out_txt)
     return out_txt
 

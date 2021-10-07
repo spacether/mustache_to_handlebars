@@ -65,7 +65,7 @@ class TestHelpers(unittest.TestCase):
         expected_out_txt = '\n'.join([
             '{{#a}}{{#b}}',
             '{{#someList~}}',
-            '  {{#otherList~}}',
+            '  {{#otherList}}',
             '{{#if @first~}}',
             '{{/if~}}',
             '{{#if @last~}}',
@@ -75,7 +75,7 @@ class TestHelpers(unittest.TestCase):
             '{{#unless @last~}}',
             '{{/unless~}}',
             '{{/b}}{{/a}}',
-            '  {{/otherList~}}',
+            '  {{/otherList}}',
             '{{/someList~}}'
         ])
         self.assertEqual(
