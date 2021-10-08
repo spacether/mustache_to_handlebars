@@ -49,6 +49,7 @@ class TestHelpers(unittest.TestCase):
             '{{#a}}{{#b}}',
             '{{#someList}}',
             '  {{#otherList}}',
+            '{{#c}}{{#c}}{{/c}}{{/c}}',
             '{{#-first}}',
             '{{/-first}}',
             '{{#-last}}',
@@ -66,6 +67,7 @@ class TestHelpers(unittest.TestCase):
             '{{#ifOrEachOrWith a}}{{#ifOrEachOrWith b}}',
             '{{#ifOrEachOrWith someList~}}',
             '  {{#ifOrEachOrWith otherList}}',
+            '{{#ifOrEachOrWith c}}{{#ifOrEachOrWith c}}{{/ifOrEachOrWith}}{{/ifOrEachOrWith}}',
             '{{#if @first~}}',
             '{{/if~}}',
             '{{#if @last~}}',
@@ -78,7 +80,7 @@ class TestHelpers(unittest.TestCase):
             '{{/ifOrEachOrWith~}}',
             '{{/ifOrEachOrWith}}{{/ifOrEachOrWith}}',
         ])
-        expected_ambiguous_tags = {'b', 'someList', 'otherList', 'a'}
+        expected_ambiguous_tags = {'b', 'someList', 'otherList', 'a', 'c'}
         self.assertEqual(
             out_txt, expected_out_txt)
         self.assertEqual(
