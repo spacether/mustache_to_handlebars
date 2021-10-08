@@ -61,7 +61,7 @@ class TestHelpers(unittest.TestCase):
             '{{/someList}}',
             '{{/b}}{{/a}}'
         ])
-        out_txt = main._convert_handlebars_to_mustache(in_txt)
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(in_txt)
         expected_out_txt = '\n'.join([
             '{{#if a}}{{#if b}}',
             '{{#if someList~}}',
@@ -78,8 +78,11 @@ class TestHelpers(unittest.TestCase):
             '{{/if~}}',
             '{{/if}}{{/if}}',
         ])
+        expected_ambiguous_tags = {'b', 'someList', 'otherList', 'a'}
         self.assertEqual(
             out_txt, expected_out_txt)
+        self.assertEqual(
+            ambiguous_tags, expected_ambiguous_tags)
 
 if __name__ == '__main__':
     unittest.main()

@@ -5,18 +5,21 @@ import typing
 import re
 from enum import Enum
 
-
-MUSTACHE_EXTENSION = 'mustache'
-MUSTACHE_IF_UNLESS_CLOSE_PATTERN = r'{{([#^/].+?)}}'
-MUSTACHE_TO_HANDLEBARS_TAG = {
-    '-first': '@first',
-    '-last': '@last'
-}
-
 HANDLEBARS_EXTENSION = 'handlebars'
 HANDLEBARS_IF_CLOSE = '{{/if}}'
 HANDLEBARS_UNLESS_CLOSE = '{{/unless}}'
 HANDLEBARS_WHITESPACE_REMOVAL_CHAR = '~'
+HANDLEBARS_FIRST = '@first'
+HANDLEBARS_LAST = '@last'
+
+
+MUSTACHE_EXTENSION = 'mustache'
+MUSTACHE_IF_UNLESS_CLOSE_PATTERN = r'{{([#^/].+?)}}'
+MUSTACHE_TO_HANDLEBARS_TAG = {
+    '-first': HANDLEBARS_FIRST,
+    '-last': HANDLEBARS_LAST
+}
+
 
 class MustacheTagType(str, Enum):
     IF = '#'  # it is unclear if this should be an if(presence) OR each(list iteration) OR with(enter object context)
@@ -93,11 +96,12 @@ def _add_whitespace_handling(in_txt: str) -> str:
             pass
     return '\n'.join(lines)
 
-def _convert_handlebars_to_mustache(in_txt: str) -> str:
+def _convert_handlebars_to_mustache(in_txt: str) -> typing.Tuple[str, typing.Set[str]]:
     # extract all control tags from {{#someTag}} and {{/someTag}} patterns
     tags = set(re.findall(MUSTACHE_IF_UNLESS_CLOSE_PATTERN, in_txt))
+    ambiguous_tags = set()
     if not tags:
-        return in_txt
+        return in_txt, ambiguous_tags
     replacement_index_to_from_to_pair = {}
     closures = []
     for i in range(len(in_txt)):
@@ -112,6 +116,8 @@ def _convert_handlebars_to_mustache(in_txt: str) -> str:
             if substr == tag_with_braces:
                 tag = tag_without_braces[1:]
                 tag = mustache_to_handlebars_tag_element(tag)
+                if tag not in {HANDLEBARS_FIRST, HANDLEBARS_LAST}:
+                    ambiguous_tags.add(tag)
                 tag_type = MustacheTagType(tag_without_braces[0])
 
                 if tag_type is MustacheTagType.IF:
@@ -132,16 +138,25 @@ def _convert_handlebars_to_mustache(in_txt: str) -> str:
         out_txt = out_txt[0:i] + new_tag + out_txt[i+len(original_tag):]
 
     out_txt = _add_whitespace_handling(out_txt)
-    return out_txt
+    return out_txt, ambiguous_tags
 
-def _create_files(in_path_to_out_path: dict):
+def _create_files(in_path_to_out_path: dict) -> typing.List[str]:
     existing_out_folders = set()
+    ambiguous_tags = set()
+    input_files_used_to_make_output_files = []
+    skipped_files = 0
     for i, (in_path, out_path) in enumerate(in_path_to_out_path.items()):
         print('Reading file {} out of {}, path={}'.format(i+1, len(in_path_to_out_path), in_path))
         with open(in_path) as file:
             in_txt = file.read()
 
-        out_txt = _convert_handlebars_to_mustache(in_txt)
+        out_txt, file_ambiguous_tags = _convert_handlebars_to_mustache(in_txt)
+        if file_ambiguous_tags:
+            ambiguous_tags.update(file_ambiguous_tags)
+            skipped_files += 1
+            print('Skipped writing file {} because it has ambiguous tags'.format(out_path))
+            continue
+
         out_folder = os.path.dirname(out_path)
         if out_folder not in existing_out_folders:
             if not os.path.isdir(out_folder):
@@ -150,7 +165,13 @@ def _create_files(in_path_to_out_path: dict):
 
         with open(out_path, 'w') as file:
             file.write(out_txt)
+        input_files_used_to_make_output_files.append(in_path)
         print('Wrote file {}'.format(out_path))
+
+    if ambiguous_tags:
+        print('len(ambiguous_tags)={}'.format(len(ambiguous_tags)))
+        print('skipped generating {} files'.format(skipped_files))
+        print('ambiguous_tags={}'.format(ambiguous_tags))
 
 def _clean_up_files(files_to_delete: typing.List[str]):
     if not files_to_delete:
@@ -167,6 +188,6 @@ def mustache_to_handlebars():
         out_dir = in_dir
 
     in_path_to_out_path = _get_in_file_to_out_file_map(in_dir, out_dir, recursive)
-    _create_files(in_path_to_out_path)
+    input_files_used_to_make_output_files = _create_files(in_path_to_out_path)
     if delete_in_files:
-        _clean_up_files(list(in_path_to_out_path.keys()))
+        _clean_up_files(input_files_used_to_make_output_files)
