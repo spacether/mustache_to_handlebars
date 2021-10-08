@@ -44,7 +44,7 @@ class TestHelpers(unittest.TestCase):
         )
         main._clean_up_files(handlebars_files)
 
-    def test_convert_handlebars_to_mustache(self):
+    def test_convert_handlebars_to_mustache_with_ambiguous_tags(self):
         in_txt = '\n'.join([
             '{{#a}}{{#b}}',
             '{{#someList}}',
@@ -62,7 +62,12 @@ class TestHelpers(unittest.TestCase):
             '{{/someList}}',
             '{{/b}}{{/a}}'
         ])
-        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(in_txt)
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            main.HANDLEBARS_IF_TAGS,
+            main.HANDLEBARS_EACH_TAGS,
+            main.HANDLEBARS_WITH_TAGS,
+        )
         expected_out_txt = '\n'.join([
             '{{#ifOrEachOrWith a}}{{#ifOrEachOrWith b}}',
             '{{#ifOrEachOrWith someList~}}',
@@ -81,6 +86,53 @@ class TestHelpers(unittest.TestCase):
             '{{/ifOrEachOrWith}}{{/ifOrEachOrWith}}',
         ])
         expected_ambiguous_tags = {'b', 'someList', 'otherList', 'a', 'c'}
+        self.assertEqual(
+            out_txt, expected_out_txt)
+        self.assertEqual(
+            ambiguous_tags, expected_ambiguous_tags)
+
+    def test_convert_handlebars_to_mustache_no_ambiguous_tags(self):
+        in_txt = '\n'.join([
+            '{{#a}}{{#b}}',
+            '{{#someList}}',
+            '  {{#otherList}}',
+            '{{#c}}{{#c}}{{/c}}{{/c}}',
+            '{{#-first}}',
+            '{{/-first}}',
+            '{{#-last}}',
+            '{{/-last}}',
+            '{{^-first}}',
+            '{{/-first}}',
+            '{{^-last}}',
+            '{{/-last}}',
+            '  {{/otherList}}',
+            '{{/someList}}',
+            '{{/b}}{{/a}}'
+        ])
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            {main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, 'a', 'b'},
+            {'someList', 'otherList'},
+            {'c'},
+        )
+        expected_out_txt = '\n'.join([
+            '{{#if a}}{{#if b}}',
+            '{{#each someList~}}',
+            '  {{#each otherList}}',
+            '{{#with c}}{{#with c}}{{/with}}{{/with}}',
+            '{{#if @first~}}',
+            '{{/if~}}',
+            '{{#if @last~}}',
+            '{{/if~}}',
+            '{{#unless @first~}}',
+            '{{/unless~}}',
+            '{{#unless @last~}}',
+            '{{/unless~}}',
+            '  {{/each}}',
+            '{{/each~}}',
+            '{{/if}}{{/if}}',
+        ])
+        expected_ambiguous_tags = set()
         self.assertEqual(
             out_txt, expected_out_txt)
         self.assertEqual(

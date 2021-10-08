@@ -37,12 +37,17 @@ class HandlebarsTagType(Enum):
     EACH = 1
     WITH = 2
 
-def __get_handlebars_tag_type(tag: str) -> typing.Optional[HandlebarsTagType]:
-    if tag in HANDLEBARS_IF_TAGS:
+def __get_handlebars_tag_type(
+    tag: str,
+    handlebars_if_tags: typing.Set[str],
+    handlebars_each_tags: typing.Set[str],
+    handlebars_with_tags: typing.Set[str]
+) -> typing.Optional[HandlebarsTagType]:
+    if tag in handlebars_if_tags:
         return HandlebarsTagType.IF
-    if tag in HANDLEBARS_EACH_TAGS:
+    if tag in handlebars_each_tags:
         return HandlebarsTagType.EACH
-    if tag in HANDLEBARS_WITH_TAGS:
+    if tag in handlebars_with_tags:
         return HandlebarsTagType.WITH
     return None
 
@@ -116,7 +121,12 @@ def _add_whitespace_handling(in_txt: str) -> str:
             pass
     return '\n'.join(lines)
 
-def _convert_handlebars_to_mustache(in_txt: str) -> typing.Tuple[str, typing.Set[str]]:
+def _convert_handlebars_to_mustache(
+    in_txt: str,
+    handlebars_if_tags: typing.Set[str],
+    handlebars_each_tags: typing.Set[str],
+    handlebars_with_tags: typing.Set[str]
+) -> typing.Tuple[str, typing.Set[str]]:
     # extract all control tags from {{#someTag}} and {{/someTag}} patterns
     tags = set(re.findall(MUSTACHE_IF_UNLESS_CLOSE_PATTERN, in_txt))
     ambiguous_tags = set()
@@ -136,7 +146,12 @@ def _convert_handlebars_to_mustache(in_txt: str) -> typing.Tuple[str, typing.Set
             if substr == tag_with_braces:
                 tag = tag_without_braces[1:]
                 tag = __mustache_to_handlebars_tag_element(tag)
-                handlebars_tag_type = __get_handlebars_tag_type(tag)
+                handlebars_tag_type = __get_handlebars_tag_type(
+                    tag,
+                    handlebars_if_tags,
+                    handlebars_each_tags,
+                    handlebars_with_tags
+                )
                 if handlebars_tag_type is None:
                     ambiguous_tags.add(tag)
                 mustache_tag_type = MustacheTagType(tag_without_braces[0])
@@ -181,7 +196,7 @@ def _create_files(in_path_to_out_path: dict) -> typing.List[str]:
         with open(in_path) as file:
             in_txt = file.read()
 
-        out_txt, file_ambiguous_tags = _convert_handlebars_to_mustache(in_txt)
+        out_txt, file_ambiguous_tags = _convert_handlebars_to_mustache(in_txt, HANDLEBARS_IF_TAGS, HANDLEBARS_EACH_TAGS, HANDLEBARS_WITH_TAGS)
         if file_ambiguous_tags:
             ambiguous_tags.update(file_ambiguous_tags)
             skipped_files += 1
