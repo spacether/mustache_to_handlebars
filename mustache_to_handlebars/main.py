@@ -19,7 +19,7 @@ HANDLEBARS_UNLESS_CLOSE = '{{/unless}}'
 HANDLEBARS_WHITESPACE_REMOVAL_CHAR = '~'
 
 class MustacheTagType(str, Enum):
-    IF = '#'
+    IF = '#'  # it is unclear if this should be an if(presence) OR each(list iteration) OR with(enter object context)
     UNLESS = '^'
     CLOSE = '/'
 
