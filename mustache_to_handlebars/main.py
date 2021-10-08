@@ -8,6 +8,8 @@ from enum import Enum
 HANDLEBARS_EXTENSION = 'handlebars'
 HANDLEBARS_IF_CLOSE = '{{/if}}'
 HANDLEBARS_UNLESS_CLOSE = '{{/unless}}'
+HANDLEBARS_WITH_CLOSE = '{{/with}}'
+HANDLEBARS_EACH_CLOSE = '{{/each}}'
 HANDLEBARS_WHITESPACE_REMOVAL_CHAR = '~'
 HANDLEBARS_FIRST = '@first'
 HANDLEBARS_LAST = '@last'
@@ -21,12 +23,30 @@ MUSTACHE_TO_HANDLEBARS_TAG = {
 }
 
 
+HANDLEBARS_IF_TAGS = {HANDLEBARS_FIRST, HANDLEBARS_LAST}
+HANDLEBARS_EACH_TAGS = set()
+HANDLEBARS_WITH_TAGS = set()
+
 class MustacheTagType(str, Enum):
-    IF = '#'  # it is unclear if this should be an if(presence) OR each(list iteration) OR with(enter object context)
+    IF_EACH_WITH = '#'  # it is unclear if this should be an if(presence) OR each(list iteration) OR with(enter object context)
     UNLESS = '^'
     CLOSE = '/'
 
-def mustache_to_handlebars_tag_element(mustache_tag_element: str) -> str:
+class HandlebarsTagType(Enum):
+    IF = 0
+    EACH = 1
+    WITH = 2
+
+def __get_handlebars_tag_type(tag: str) -> typing.Optional[HandlebarsTagType]:
+    if tag in HANDLEBARS_IF_TAGS:
+        return HandlebarsTagType.IF
+    if tag in HANDLEBARS_EACH_TAGS:
+        return HandlebarsTagType.EACH
+    if tag in HANDLEBARS_WITH_TAGS:
+        return HandlebarsTagType.WITH
+    return None
+
+def __mustache_to_handlebars_tag_element(mustache_tag_element: str) -> str:
     """
     '-first' -> '@first'
     Input excludes the #/^ control characters
@@ -115,18 +135,29 @@ def _convert_handlebars_to_mustache(in_txt: str) -> typing.Tuple[str, typing.Set
 
             if substr == tag_with_braces:
                 tag = tag_without_braces[1:]
-                tag = mustache_to_handlebars_tag_element(tag)
-                if tag not in {HANDLEBARS_FIRST, HANDLEBARS_LAST}:
+                tag = __mustache_to_handlebars_tag_element(tag)
+                handlebars_tag_type = __get_handlebars_tag_type(tag)
+                if handlebars_tag_type is None:
                     ambiguous_tags.add(tag)
-                tag_type = MustacheTagType(tag_without_braces[0])
+                mustache_tag_type = MustacheTagType(tag_without_braces[0])
 
-                if tag_type is MustacheTagType.IF:
-                    new_tag = '{{#if ' + tag + '}}'
-                    closures.append(HANDLEBARS_IF_CLOSE)
-                elif tag_type is MustacheTagType.UNLESS:
+                if mustache_tag_type is MustacheTagType.IF_EACH_WITH:
+                    if handlebars_tag_type is HandlebarsTagType.IF:
+                        new_tag = '{{#if ' + tag + '}}'
+                        closures.append(HANDLEBARS_IF_CLOSE)
+                    elif handlebars_tag_type is HandlebarsTagType.EACH:
+                        new_tag = '{{#each ' + tag + '}}'
+                        closures.append(HANDLEBARS_EACH_CLOSE)
+                    elif handlebars_tag_type is HandlebarsTagType.WITH:
+                        new_tag = '{{#with ' + tag + '}}'
+                        closures.append(HANDLEBARS_WITH_CLOSE)
+                    else:
+                        new_tag = '{{#ifOrEachOrWith ' + tag + '}}'
+                        closures.append('{{/ifOrEachOrWith}}')
+                elif mustache_tag_type is MustacheTagType.UNLESS:
                     new_tag = '{{#unless ' + tag + '}}'
                     closures.append(HANDLEBARS_UNLESS_CLOSE)
-                elif tag_type is MustacheTagType.CLOSE:
+                elif mustache_tag_type is MustacheTagType.CLOSE:
                     new_tag = closures.pop()
 
                 replacement_index_to_from_to_pair[i] = (tag_with_braces, new_tag)

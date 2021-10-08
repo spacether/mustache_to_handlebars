@@ -63,9 +63,9 @@ class TestHelpers(unittest.TestCase):
         ])
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(in_txt)
         expected_out_txt = '\n'.join([
-            '{{#if a}}{{#if b}}',
-            '{{#if someList~}}',
-            '  {{#if otherList}}',
+            '{{#ifOrEachOrWith a}}{{#ifOrEachOrWith b}}',
+            '{{#ifOrEachOrWith someList~}}',
+            '  {{#ifOrEachOrWith otherList}}',
             '{{#if @first~}}',
             '{{/if~}}',
             '{{#if @last~}}',
@@ -74,9 +74,9 @@ class TestHelpers(unittest.TestCase):
             '{{/unless~}}',
             '{{#unless @last~}}',
             '{{/unless~}}',
-            '  {{/if}}',
-            '{{/if~}}',
-            '{{/if}}{{/if}}',
+            '  {{/ifOrEachOrWith}}',
+            '{{/ifOrEachOrWith~}}',
+            '{{/ifOrEachOrWith}}{{/ifOrEachOrWith}}',
         ])
         expected_ambiguous_tags = {'b', 'someList', 'otherList', 'a'}
         self.assertEqual(
