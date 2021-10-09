@@ -35,7 +35,12 @@ class TestHelpers(unittest.TestCase):
     def test_create_files(self):
         in_file_to_out_file_map = main._get_in_file_to_out_file_map(
             in_dir=self.in_dir, out_dir=self.in_dir, recursive=False)
-        main._create_files(in_file_to_out_file_map)
+        main._create_files(
+            in_file_to_out_file_map,
+            {main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST},
+            set(),
+            set(),
+        )
         in_handebars_path_pattern = os.path.join('tests', 'in_dir', '*.{}'.format(main.HANDLEBARS_EXTENSION))
         handlebars_files = glob.glob(in_handebars_path_pattern, recursive=False)
         self.assertEqual(
@@ -64,9 +69,9 @@ class TestHelpers(unittest.TestCase):
         ])
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
             in_txt,
-            main.HANDLEBARS_IF_TAGS,
-            main.HANDLEBARS_EACH_TAGS,
-            main.HANDLEBARS_WITH_TAGS,
+            {main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST},
+            set(),
+            set(),
         )
         expected_out_txt = '\n'.join([
             '{{#ifOrEachOrWith a}}{{#ifOrEachOrWith b}}',

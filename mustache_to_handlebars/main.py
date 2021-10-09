@@ -21,14 +21,11 @@ MUSTACHE_TO_HANDLEBARS_TAG = {
 }
 
 
-HANDLEBARS_IF_TAGS = {HANDLEBARS_FIRST, HANDLEBARS_LAST}
-HANDLEBARS_EACH_TAGS = set()
-HANDLEBARS_WITH_TAGS = set()
-
 class MustacheTagType(str, Enum):
     IF_EACH_WITH = '#'  # it is unclear if this should be an if(presence) OR each(list iteration) OR with(enter object context)
     UNLESS = '^'
     CLOSE = '/'
+
 
 class HandlebarsTagType(Enum):
     # value is open prefix, close tag
@@ -37,6 +34,7 @@ class HandlebarsTagType(Enum):
     WITH = ('#with', '/with')
     UNLESS = ('#unless', '/unless')
     CLOSE = ('', '')
+
 
 def __get_handlebars_tag_type(
     tag: str,
@@ -60,6 +58,7 @@ def __get_handlebars_tag_type(
         return HandlebarsTagType.CLOSE
     return None
 
+
 def __mustache_to_handlebars_tag_element(mustache_tag_element: str) -> str:
     """
     '-first' -> '@first'
@@ -70,20 +69,32 @@ def __mustache_to_handlebars_tag_element(mustache_tag_element: str) -> str:
         return mustache_tag_element
     return handlebars_tag_element
 
-def __dir_path(string):
-    if os.path.isdir(string):
-        return string
+
+def __dir_path(path: str) -> str:
+    if os.path.isdir(path):
+        return path
     else:
-        raise NotADirectoryError(string)
+        raise NotADirectoryError(path)
+
+
+def __list_of_strings(space_delim_tags: str) -> typing.Set[str]:
+    if not isinstance(space_delim_tags, str):
+        raise ValueError('Invalid type, a space delimited string must be passed in')
+    return set(space_delim_tags.split(' '))
+
 
 def __get_args():
     parser = argparse.ArgumentParser(description='convert templates from mustache to handebars')
     parser.add_argument('in_dir', type=__dir_path)
     parser.add_argument('-out_dir', type=str)
+    parser.add_argument('-handlebars_if_tags', type=__list_of_strings, default=set())
+    parser.add_argument('-handlebars_each_tags', type=__list_of_strings, default=set())
+    parser.add_argument('-handlebars_with_tags', type=__list_of_strings, default=set())
     parser.add_argument('-recursive', type=bool, default=True)
     parser.add_argument('-delete_in_files', type=bool, default=False)
     args = parser.parse_args()
-    return args.in_dir, args.out_dir, args.recursive, args.delete_in_files
+    return args
+
 
 def _get_in_file_to_out_file_map(in_dir: str, out_dir: str, recursive: bool) -> dict:
     path_args = []
@@ -129,6 +140,7 @@ def _add_whitespace_handling(in_txt: str) -> str:
         except ValueError:
             pass
     return '\n'.join(lines)
+
 
 def _convert_handlebars_to_mustache(
     in_txt: str,
@@ -186,7 +198,13 @@ def _convert_handlebars_to_mustache(
     out_txt = _add_whitespace_handling(out_txt)
     return out_txt, ambiguous_tags
 
-def _create_files(in_path_to_out_path: dict) -> typing.Tuple[typing.List[str], typing.Set[str]]:
+
+def _create_files(
+    in_path_to_out_path: dict,
+    handlebars_if_tags: typing.Set[str],
+    handlebars_each_tags: typing.Set[str],
+    handlebars_with_tags: typing.Set[str]
+) -> typing.Tuple[typing.List[str], typing.Set[str]]:
     existing_out_folders = set()
     ambiguous_tags = set()
     input_files_used_to_make_output_files = []
@@ -195,7 +213,7 @@ def _create_files(in_path_to_out_path: dict) -> typing.Tuple[typing.List[str], t
         with open(in_path) as file:
             in_txt = file.read()
 
-        out_txt, file_ambiguous_tags = _convert_handlebars_to_mustache(in_txt, HANDLEBARS_IF_TAGS, HANDLEBARS_EACH_TAGS, HANDLEBARS_WITH_TAGS)
+        out_txt, file_ambiguous_tags = _convert_handlebars_to_mustache(in_txt, handlebars_if_tags, handlebars_each_tags, handlebars_with_tags)
         if file_ambiguous_tags:
             ambiguous_tags.update(file_ambiguous_tags)
             print('Skipped writing file {} because it has ambiguous tags'.format(out_path))
@@ -213,6 +231,7 @@ def _create_files(in_path_to_out_path: dict) -> typing.Tuple[typing.List[str], t
         print('Wrote file {}'.format(out_path))
     return input_files_used_to_make_output_files, ambiguous_tags
 
+
 def _clean_up_files(files_to_delete: typing.List[str]):
     if not files_to_delete:
         print('Original templates have not been deleted')
@@ -220,6 +239,7 @@ def _clean_up_files(files_to_delete: typing.List[str]):
     for i, path in enumerate(files_to_delete):
         print('Removing file {} out of {}, path={}'.format(i+1, len(files_to_delete), path))
         os.remove(path)
+
 
 def __handle_ambiguous_tags(ambiguous_tags: typing.Set[str], qty_skipped_files: int):
     print('\nskipped generating {} files'.format(qty_skipped_files))
@@ -250,12 +270,22 @@ def __handle_ambiguous_tags(ambiguous_tags: typing.Set[str], qty_skipped_files: 
 
 
 def mustache_to_handlebars():
-    in_dir, out_dir, recursive, delete_in_files = __get_args()
+    args = __get_args()
+    in_dir, out_dir, recursive, delete_in_files = (args.in_dir, args.out_dir, args.recursive, args.delete_in_files)
+    handlebars_if_tags, handlebars_each_tags, handlebars_with_tags = (
+        args.handlebars_if_tags, args.handlebars_each_tags, args.handlebars_with_tags)
+    handlebars_if_tags.update({HANDLEBARS_FIRST, HANDLEBARS_LAST})
+
     if not out_dir:
         out_dir = in_dir
 
     in_path_to_out_path = _get_in_file_to_out_file_map(in_dir, out_dir, recursive)
-    input_files_used_to_make_output_files, ambiguous_tags = _create_files(in_path_to_out_path)
+    input_files_used_to_make_output_files, ambiguous_tags = _create_files(
+        in_path_to_out_path,
+        handlebars_if_tags,
+        handlebars_each_tags,
+        handlebars_with_tags,
+    )
 
     if ambiguous_tags:
         __handle_ambiguous_tags(
