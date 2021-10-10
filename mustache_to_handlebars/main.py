@@ -264,9 +264,9 @@ def __handle_ambiguous_tags(ambiguous_tags: typing.Set[str], qty_skipped_files: 
     ambiguous_tags = ambiguous_tags - set(suspected_each_tags)
     suspected_with_tags = list(ambiguous_tags)
     print('here are some guesses at what your tags may be based only on tag names:\n')
-    print('if_tags=\"{}\"\n'.format(" ".join(suspected_if_tags)))
-    print('each_tags=\"{}\"\n'.format(" ".join(suspected_each_tags)))
-    print('with_tags=\"{}\"\n'.format(" ".join(suspected_with_tags)))
+    print('-handlebars_if_tags=\"{}\"\n'.format(" ".join(suspected_if_tags)))
+    print('-handlebars_each_tags=\"{}\"\n'.format(" ".join(suspected_each_tags)))
+    print('-handlebars_with_tags=\"{}\"\n'.format(" ".join(suspected_with_tags)))
 
 
 def mustache_to_handlebars():
