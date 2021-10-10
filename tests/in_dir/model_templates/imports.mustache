@@ -30,18 +30,4 @@ from {{packageName}}.model_utils import (  # noqa: F401
     Unset,
     unset,
     Schema
-){{#imports}}{{#-first}}
-
-
-def lazy_import() -> typing.Dict[str, typing.Type[Schema]]:
-    zzz_class_name_to_class = {}
-    {{{.}}}
-{{/-first}}
-{{^-first}}
-{{^-last}}
-    {{{.}}}
-{{/-last}}
-{{/-first}}
-{{#-last}}
-    {{{.}}}
-    return zzz_class_name_to_class{{/-last}}{{/imports}}
+)
