@@ -35,11 +35,14 @@ class TestHelpers(unittest.TestCase):
     def test_create_files(self):
         in_file_to_out_file_map = main._get_in_file_to_out_file_map(
             in_dir=self.in_dir, out_dir=self.in_dir, recursive=False)
+        handlebars_tag_set = main.HandlebarTagSet(
+            if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST},
+            each_tags=set(),
+            with_tags=set()
+        )
+        whitespace_config = main.HandlebarsWhitespaceConfig()
         main._create_files(
-            in_file_to_out_file_map,
-            {main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST},
-            set(),
-            set(),
+            in_file_to_out_file_map, handlebars_tag_set, whitespace_config
         )
         in_handebars_path_pattern = os.path.join('tests', 'in_dir', '*.{}'.format(main.HANDLEBARS_EXTENSION))
         handlebars_files = glob.glob(in_handebars_path_pattern, recursive=False)
@@ -49,12 +52,8 @@ class TestHelpers(unittest.TestCase):
         )
         main._clean_up_files(handlebars_files)
 
-    def test_convert_handlebars_to_mustache_with_ambiguous_tags(self):
+    def test_convert_handlebars_to_mustache_if_unless_first_last(self):
         in_txt = '\n'.join([
-            '{{#a}}{{#b}}',
-            '{{#someList}}',
-            '  {{#otherList}}',
-            '{{#c}}{{#c}}{{/c}}{{/c}}',
             '{{#-first}}',
             '{{/-first}}',
             '{{#-last}}',
@@ -63,34 +62,162 @@ class TestHelpers(unittest.TestCase):
             '{{/-first}}',
             '{{^-last}}',
             '{{/-last}}',
+        ])
+        handlebars_tag_set = main.HandlebarTagSet(
+            if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST},
+            each_tags=set(),
+            with_tags=set()
+        )
+        whitespace_config = main.HandlebarsWhitespaceConfig()
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            whitespace_config
+        )
+        expected_out_txt = '\n'.join([
+            '{{#if @first}}',
+            '{{/if}}',
+            '{{#if @last}}',
+            '{{/if}}',
+            '{{#unless @first}}',
+            '{{/unless}}',
+            '{{#unless @last}}',
+            '{{/unless}}',
+        ])
+        expected_ambiguous_tags = set()
+        self.assertEqual(
+            out_txt, expected_out_txt)
+        self.assertEqual(
+            ambiguous_tags, expected_ambiguous_tags)
+
+    def test_convert_handlebars_to_mustache_tag_whitespace_config(self):
+        in_txt = '\n'.join([
+            '{{#a}}',
+            '{{/a}}',
+        ])
+
+        handlebars_tag_set = main.HandlebarTagSet(
+            if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, 'a'},
+            each_tags=set(),
+            with_tags=set()
+        )
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            main.HandlebarsWhitespaceConfig(
+                remove_whitespace_before_open=True
+            )
+        )
+        expected_out_txt = '\n'.join([
+            '{{~#if a}}',
+            '{{/if}}',
+
+        ])
+        self.assertEqual(
+            out_txt, expected_out_txt)
+        self.assertEqual(
+            ambiguous_tags, set())
+
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            main.HandlebarsWhitespaceConfig(
+                remove_whitespace_after_open=True
+            )
+        )
+        expected_out_txt = '\n'.join([
+            '{{#if a~}}',
+            '{{/if}}',
+
+        ])
+        self.assertEqual(
+            out_txt, expected_out_txt)
+
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            main.HandlebarsWhitespaceConfig(
+                remove_whitespace_before_close=True
+            )
+        )
+        expected_out_txt = '\n'.join([
+            '{{#if a}}',
+            '{{~/if}}',
+
+        ])
+        self.assertEqual(
+            out_txt, expected_out_txt)
+
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            main.HandlebarsWhitespaceConfig(
+                remove_whitespace_after_close=True
+            )
+        )
+        expected_out_txt = '\n'.join([
+            '{{#if a}}',
+            '{{/if~}}',
+
+        ])
+        self.assertEqual(
+            out_txt, expected_out_txt)
+
+    def test_convert_handlebars_to_mustache_tag_in_tag(self):
+        in_txt = '\n'.join([
+            '{{#a}}{{#a}}{{/a}}{{/a}}',
+        ])
+
+        handlebars_tag_set = main.HandlebarTagSet(
+            if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, 'a'},
+            each_tags=set(),
+            with_tags=set()
+        )
+        whitespace_config = main.HandlebarsWhitespaceConfig()
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            whitespace_config
+        )
+        expected_out_txt = '\n'.join([
+            '{{#if a}}{{#if a}}{{/if}}{{/if}}',
+
+        ])
+        expected_ambiguous_tags = set()
+        self.assertEqual(
+            out_txt, expected_out_txt)
+        self.assertEqual(
+            ambiguous_tags, expected_ambiguous_tags)
+
+    def test_convert_handlebars_to_mustache_with_ambiguous_tags(self):
+        in_txt = '\n'.join([
+            '{{#a}}{{#b}}',
+            '{{#someList}}',
+            '  {{#otherList}}',
             '  {{/otherList}}',
             '{{/someList}}',
             '{{/b}}{{/a}}'
         ])
+        handlebars_tag_set = main.HandlebarTagSet(
+            if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST},
+            each_tags=set(),
+            with_tags=set()
+        )
+        whitespace_config = main.HandlebarsWhitespaceConfig()
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
             in_txt,
-            {main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST},
-            set(),
-            set(),
+            handlebars_tag_set,
+            whitespace_config
         )
         expected_out_txt = '\n'.join([
             '{{#ifOrEachOrWith a}}{{#ifOrEachOrWith b}}',
-            '{{#ifOrEachOrWith someList~}}',
+            '{{#ifOrEachOrWith someList}}',
             '  {{#ifOrEachOrWith otherList}}',
-            '{{#ifOrEachOrWith c}}{{#ifOrEachOrWith c}}{{/ifOrEachOrWith}}{{/ifOrEachOrWith}}',
-            '{{#if @first~}}',
-            '{{/if~}}',
-            '{{#if @last~}}',
-            '{{/if~}}',
-            '{{#unless @first~}}',
-            '{{/unless~}}',
-            '{{#unless @last~}}',
-            '{{/unless~}}',
             '  {{/ifOrEachOrWith}}',
-            '{{/ifOrEachOrWith~}}',
+            '{{/ifOrEachOrWith}}',
             '{{/ifOrEachOrWith}}{{/ifOrEachOrWith}}',
         ])
-        expected_ambiguous_tags = {'b', 'someList', 'otherList', 'a', 'c'}
+        expected_ambiguous_tags = {'b', 'someList', 'otherList', 'a'}
         self.assertEqual(
             out_txt, expected_out_txt)
         self.assertEqual(
@@ -101,41 +228,28 @@ class TestHelpers(unittest.TestCase):
             '{{#a}}{{#b}}',
             '{{#someList}}',
             '  {{#otherList}}',
-            '{{#c}}{{#c}}{{/c}}{{/c}}',
-            '{{#-first}}',
-            '{{/-first}}',
-            '{{#-last}}',
-            '{{/-last}}',
-            '{{^-first}}',
-            '{{/-first}}',
-            '{{^-last}}',
-            '{{/-last}}',
             '  {{/otherList}}',
             '{{/someList}}',
             '{{/b}}{{/a}}'
         ])
+        handlebars_tag_set = main.HandlebarTagSet(
+            if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, 'a'},
+            each_tags={'someList', 'otherList'},
+            with_tags={'b'}
+        )
+        whitespace_config = main.HandlebarsWhitespaceConfig()
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
             in_txt,
-            {main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, 'a', 'b'},
-            {'someList', 'otherList'},
-            {'c'},
+            handlebars_tag_set,
+            whitespace_config
         )
         expected_out_txt = '\n'.join([
-            '{{#if a}}{{#if b}}',
-            '{{#each someList~}}',
+            '{{#if a}}{{#with b}}',
+            '{{#each someList}}',
             '  {{#each otherList}}',
-            '{{#with c}}{{#with c}}{{/with}}{{/with}}',
-            '{{#if @first~}}',
-            '{{/if~}}',
-            '{{#if @last~}}',
-            '{{/if~}}',
-            '{{#unless @first~}}',
-            '{{/unless~}}',
-            '{{#unless @last~}}',
-            '{{/unless~}}',
             '  {{/each}}',
-            '{{/each~}}',
-            '{{/if}}{{/if}}',
+            '{{/each}}',
+            '{{/with}}{{/if}}',
         ])
         expected_ambiguous_tags = set()
         self.assertEqual(

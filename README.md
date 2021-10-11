@@ -15,13 +15,32 @@ Handles conversion for if/unless first + last
 - {{/-last}} -> {{\if}} OR {{\unless}}
 
 Tags that begin with # are ambiguous when going from mustache to handlebars because
-i mustache, # handles, truthy input, array input, and object context input.
+in mustache, # handles, truthy input, array input, and object context input.
 So in handlebars, a mustache #someTag can be #if someTag, #each someTag, or #with someTag
-- this tool prints out those nebulous tags so the user can decide which usage it should be
+- this tool prints out those ambiguous tags so the user can decide which usage it should be
 - one can assign those tags to the if/each/with use cases with the command line arguments
   - -handlebars_if_tags
   - -handlebars_each_tags
   - -handlebars_with_tags
+
+## Usage
+Clone this repo
+```
+# make the virtual env
+python3 -m venv venv
+# activate it
+venv bin/activate
+# install the tool into it
+make install
+```
+Invoke the tool per these options:
+mustache_to_handlebars [-h] [-out_dir OUT_DIR] [-handlebars_if_tags HANDLEBARS_IF_TAGS] [-handlebars_each_tags HANDLEBARS_EACH_TAGS]
+                              [-handlebars_with_tags HANDLEBARS_WITH_TAGS] [-remove_whitespace_before_open] [-remove_whitespace_after_open]
+                              [-remove_whitespace_before_close] [-remove_whitespace_after_close] [-recursive RECURSIVE] [-delete_in_files DELETE_IN_FILES]
+                              in_dir
+mustache_to_handlebars: error: the following arguments are required: in_dirNote:
+handlebars_if_tags/handlebars_each_tags/handlebars_with_tags must be a space delimited list of tags like:
+`-handlebars_if_tags='someTag anotherTag'`
 
 ## testing
 Install pytest in your virtual environment and then run make test
