@@ -94,6 +94,79 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(
             ambiguous_tags, expected_ambiguous_tags)
 
+    def test_convert_handlebars_to_mustache_tag_whitespace_config(self):
+        in_txt = '\n'.join([
+            '{{#a}}',
+            '{{/a}}',
+        ])
+
+        handlebars_tag_set = main.HandlebarTagSet(
+            if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, 'a'},
+            each_tags=set(),
+            with_tags=set()
+        )
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            main.HandlebarsWhitespaceConfig(
+                remove_whitespace_before_open=True
+            )
+        )
+        expected_out_txt = '\n'.join([
+            '{{~#if a}}',
+            '{{/if}}',
+
+        ])
+        self.assertEqual(
+            out_txt, expected_out_txt)
+        self.assertEqual(
+            ambiguous_tags, set())
+
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            main.HandlebarsWhitespaceConfig(
+                remove_whitespace_after_open=True
+            )
+        )
+        expected_out_txt = '\n'.join([
+            '{{#if a~}}',
+            '{{/if}}',
+
+        ])
+        self.assertEqual(
+            out_txt, expected_out_txt)
+
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            main.HandlebarsWhitespaceConfig(
+                remove_whitespace_before_close=True
+            )
+        )
+        expected_out_txt = '\n'.join([
+            '{{#if a}}',
+            '{{~/if}}',
+
+        ])
+        self.assertEqual(
+            out_txt, expected_out_txt)
+
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            main.HandlebarsWhitespaceConfig(
+                remove_whitespace_after_close=True
+            )
+        )
+        expected_out_txt = '\n'.join([
+            '{{#if a}}',
+            '{{/if~}}',
+
+        ])
+        self.assertEqual(
+            out_txt, expected_out_txt)
+
     def test_convert_handlebars_to_mustache_tag_in_tag(self):
         in_txt = '\n'.join([
             '{{#a}}{{#a}}{{/a}}{{/a}}',
