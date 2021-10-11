@@ -34,6 +34,14 @@ class HandlebarTagSet:
     each_tags: typing.Set[str] = field(default_factory=set)
     with_tags: typing.Set[str] = field(default_factory=set)
 
+@dataclass
+class HandlebarsWhitespaceConfig:
+    remove_whitespace_before_open: bool = False
+    remove_whitespace_after_open: bool = False
+    remove_whitespace_before_close: bool = False
+    remove_whitespace_after_close: bool = False
+
+
 class HandlebarsTagType(Enum):
     # value is open prefix, close tag
     IF = ('#if', '/if')
@@ -119,7 +127,7 @@ def _get_in_file_to_out_file_map(in_dir: str, out_dir: str, recursive: bool) -> 
     return in_path_to_out_path
 
 
-def _add_whitespace_handling(in_txt: str) -> str:
+def _add_whitespace_handling(in_txt: str, whitespace_config: HandlebarsWhitespaceConfig,) -> str:
     lines = in_txt.split('\n')
     for i, line in enumerate(lines):
         left_brace_count = line.count('{')
@@ -138,10 +146,18 @@ def _add_whitespace_handling(in_txt: str) -> str:
         # there is only one tag on this line
         suffix = line[-left_brace_count:]
         line_ends_in_closing_braces = suffix == end_braces
+        if not line_ends_in_closing_braces:
+            continue
         try:
             tag_type = MustacheTagType(line[left_brace_count])
-            if tag_type and tag_type is MustacheTagType.IF_EACH_WITH and line_ends_in_closing_braces:
+            if tag_type in {MustacheTagType.IF_EACH_WITH, MustacheTagType.UNLESS} and whitespace_config.remove_whitespace_before_open:
                 lines[i] = line[:left_brace_count] + HANDLEBARS_WHITESPACE_REMOVAL_CHAR + line[left_brace_count:]
+            if tag_type in {MustacheTagType.IF_EACH_WITH, MustacheTagType.UNLESS} and whitespace_config.remove_whitespace_after_open:
+                lines[i] = line[:-left_brace_count] + HANDLEBARS_WHITESPACE_REMOVAL_CHAR + line[-left_brace_count:]
+            if tag_type is MustacheTagType.CLOSE and whitespace_config.remove_whitespace_before_close:
+                lines[i] = line[:left_brace_count] + HANDLEBARS_WHITESPACE_REMOVAL_CHAR + line[left_brace_count:]
+            if tag_type is MustacheTagType.CLOSE and whitespace_config.remove_whitespace_after_close:
+                lines[i] = line[:-left_brace_count] + HANDLEBARS_WHITESPACE_REMOVAL_CHAR + line[-left_brace_count:]
         except ValueError:
             pass
     return '\n'.join(lines)
@@ -150,6 +166,7 @@ def _add_whitespace_handling(in_txt: str) -> str:
 def _convert_handlebars_to_mustache(
     in_txt: str,
     handlebars_tag_set: HandlebarTagSet,
+    whitespace_config: HandlebarsWhitespaceConfig,
 ) -> typing.Tuple[str, typing.Set[str]]:
     # extract all control tags from {{#someTag}} and {{/someTag}} patterns
     tags = set(re.findall(MUSTACHE_IF_UNLESS_CLOSE_PATTERN, in_txt))
@@ -196,13 +213,14 @@ def _convert_handlebars_to_mustache(
     for i, (original_tag, new_tag) in reversed(replacement_index_to_from_to_pair.items()):
         out_txt = out_txt[0:i] + new_tag + out_txt[i+len(original_tag):]
 
-    out_txt = _add_whitespace_handling(out_txt)
+    out_txt = _add_whitespace_handling(out_txt, whitespace_config)
     return out_txt, ambiguous_tags
 
 
 def _create_files(
     in_path_to_out_path: dict,
     handlebars_tag_set: HandlebarTagSet,
+    whitespace_config: HandlebarsWhitespaceConfig,
 ) -> typing.Tuple[typing.List[str], typing.Set[str]]:
     existing_out_folders = set()
     ambiguous_tags = set()
@@ -213,7 +231,7 @@ def _create_files(
             in_txt = file.read()
 
         out_txt, file_ambiguous_tags = _convert_handlebars_to_mustache(
-            in_txt, handlebars_tag_set)
+            in_txt, handlebars_tag_set, whitespace_config)
         if file_ambiguous_tags:
             ambiguous_tags.update(file_ambiguous_tags)
             print('Skipped writing file {} because it has ambiguous tags'.format(out_path))
@@ -285,9 +303,13 @@ def mustache_to_handlebars():
         each_tags=handlebars_each_tags,
         with_tags=handlebars_with_tags,
     )
+    whitespace_config = HandlebarsWhitespaceConfig(
+        remove_whitespace_after_close=True
+    )
     input_files_used_to_make_output_files, ambiguous_tags = _create_files(
         in_path_to_out_path,
-        handlebars_tag_set
+        handlebars_tag_set,
+        whitespace_config
     )
 
     if ambiguous_tags:

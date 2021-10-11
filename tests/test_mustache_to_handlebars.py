@@ -40,8 +40,11 @@ class TestHelpers(unittest.TestCase):
             each_tags=set(),
             with_tags=set()
         )
+        whitespace_config = main.HandlebarsWhitespaceConfig(
+            remove_whitespace_before_open=True
+        )
         main._create_files(
-            in_file_to_out_file_map, handlebars_tag_set
+            in_file_to_out_file_map, handlebars_tag_set, whitespace_config
         )
         in_handebars_path_pattern = os.path.join('tests', 'in_dir', '*.{}'.format(main.HANDLEBARS_EXTENSION))
         handlebars_files = glob.glob(in_handebars_path_pattern, recursive=False)
@@ -67,9 +70,13 @@ class TestHelpers(unittest.TestCase):
             each_tags=set(),
             with_tags=set()
         )
+        whitespace_config = main.HandlebarsWhitespaceConfig(
+            remove_whitespace_before_open=True
+        )
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
             in_txt,
-            handlebars_tag_set
+            handlebars_tag_set,
+            whitespace_config
         )
         expected_out_txt = '\n'.join([
             '{{~#if @first}}',
@@ -97,9 +104,13 @@ class TestHelpers(unittest.TestCase):
             each_tags=set(),
             with_tags=set()
         )
+        whitespace_config = main.HandlebarsWhitespaceConfig(
+            remove_whitespace_before_open=True
+        )
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
             in_txt,
-            handlebars_tag_set
+            handlebars_tag_set,
+            whitespace_config
         )
         expected_out_txt = '\n'.join([
             '{{#if a}}{{#if a}}{{/if}}{{/if}}',
@@ -125,9 +136,13 @@ class TestHelpers(unittest.TestCase):
             each_tags=set(),
             with_tags=set()
         )
+        whitespace_config = main.HandlebarsWhitespaceConfig(
+            remove_whitespace_before_open=True
+        )
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
             in_txt,
-            handlebars_tag_set
+            handlebars_tag_set,
+            whitespace_config
         )
         expected_out_txt = '\n'.join([
             '{{#ifOrEachOrWith a}}{{#ifOrEachOrWith b}}',
@@ -157,9 +172,13 @@ class TestHelpers(unittest.TestCase):
             each_tags={'someList', 'otherList'},
             with_tags={'b'}
         )
+        whitespace_config = main.HandlebarsWhitespaceConfig(
+            remove_whitespace_before_open=True
+        )
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
             in_txt,
-            handlebars_tag_set
+            handlebars_tag_set,
+            whitespace_config
         )
         expected_out_txt = '\n'.join([
             '{{#if a}}{{#with b}}',
