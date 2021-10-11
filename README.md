@@ -17,7 +17,7 @@ Handles conversion for if/unless first + last
 Tags that begin with # are ambiguous when going from mustache to handlebars because
 in mustache, # handles, truthy input, array input, and object context input.
 So in handlebars, a mustache #someTag can be #if someTag, #each someTag, or #with someTag
-- this tool prints out those nebulous tags so the user can decide which usage it should be
+- this tool prints out those ambiguous tags so the user can decide which usage it should be
 - one can assign those tags to the if/each/with use cases with the command line arguments
   - -handlebars_if_tags
   - -handlebars_each_tags
