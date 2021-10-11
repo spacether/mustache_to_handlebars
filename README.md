@@ -35,10 +35,10 @@ make install
 ```
 Invoke the tool per these options:
 mustache_to_handlebars [-h] [-out_dir OUT_DIR] [-handlebars_if_tags HANDLEBARS_IF_TAGS] [-handlebars_each_tags HANDLEBARS_EACH_TAGS]
-                              [-handlebars_with_tags HANDLEBARS_WITH_TAGS] [-recursive RECURSIVE] [-delete_in_files DELETE_IN_FILES]
+                              [-handlebars_with_tags HANDLEBARS_WITH_TAGS] [-remove_whitespace_before_open] [-remove_whitespace_after_open]
+                              [-remove_whitespace_before_close] [-remove_whitespace_after_close] [-recursive RECURSIVE] [-delete_in_files DELETE_IN_FILES]
                               in_dir
-
-Note:
+mustache_to_handlebars: error: the following arguments are required: in_dirNote:
 handlebars_if_tags/handlebars_each_tags/handlebars_with_tags must be a space delimited list of tags like:
 `-handlebars_if_tags='someTag anotherTag'`
 
