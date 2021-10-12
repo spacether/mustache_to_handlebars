@@ -16,6 +16,7 @@ HANDLEBARS_LAST = "@last"
 
 MUSTACHE_EXTENSION = "mustache"
 MUSTACHE_IF_UNLESS_CLOSE_PATTERN = r"{{([#^/].+?)}}"
+MUSTACHE_PARTIAL_PATTERN = r"{{>\s?(.+?)\s?}}"
 MUSTACHE_TO_HANDLEBARS_TAG = {"-first": HANDLEBARS_FIRST, "-last": HANDLEBARS_LAST}
 
 
@@ -365,6 +366,19 @@ def __handle_ambiguous_tags(ambiguous_tags: typing.Set[str], qty_skipped_files: 
     print('-handlebars_each_tags="{}"\n'.format(" ".join(suspected_each_tags)))
     print('-handlebars_with_tags="{}"\n'.format(" ".join(suspected_with_tags)))
 
+def _get_mustache_partial_paths(in_path_to_out_path: dict[str, str], in_dir: str) -> set[str]:
+    partial_paths = set()
+
+    def path_maker(partial: str):
+        return os.path.join(in_dir, '{}.{}'.format(partial, MUSTACHE_EXTENSION))
+
+    for in_path in in_path_to_out_path:
+        with open(in_path) as file:
+            in_txt = file.read()
+            file_partial_paths = set(path_maker(partial) for partial in re.findall(MUSTACHE_PARTIAL_PATTERN, in_txt))
+            partial_paths.update(file_partial_paths)
+
+    return partial_paths
 
 def mustache_to_handlebars():
     args = __get_args()
@@ -385,6 +399,7 @@ def mustache_to_handlebars():
         out_dir = in_dir
 
     in_path_to_out_path = _get_in_file_to_out_file_map(in_dir, out_dir, recursive)
+    _mustache_partial_paths = _get_mustache_partial_paths(in_path_to_out_path, in_dir)
     handlebars_tag_set = HandlebarTagSet(
         if_tags=handlebars_if_tags,
         each_tags=handlebars_each_tags,

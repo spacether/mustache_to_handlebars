@@ -32,6 +32,20 @@ class TestHelpers(unittest.TestCase):
             }
         )
 
+    def test_get_mustache_partial_paths(self):
+        in_file_to_out_file_map = {
+            'tests/in_dir/api.mustache': 'tests/in_dir/api.handlebars',
+            'tests/in_dir/model_templates/imports.mustache': 'tests/in_dir/model_templates/imports.handlebars',
+            'tests/in_dir/partial_header.mustache': 'tests/in_dir/partial_header.handlebars'
+        }
+
+        mustache_partial_paths = main._get_mustache_partial_paths(in_file_to_out_file_map, self.in_dir)
+        self.assertEqual(
+            mustache_partial_paths,
+            {'tests/in_dir/partial_header.mustache'}
+        )
+
+
     def test_create_files(self):
         in_file_to_out_file_map = main._get_in_file_to_out_file_map(
             in_dir=self.in_dir, out_dir=self.in_dir, recursive=False)
