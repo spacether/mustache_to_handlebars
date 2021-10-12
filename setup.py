@@ -13,5 +13,11 @@ setup(name='mustache_to_handlebars',
                   'mustache_to_handlebars=mustache_to_handlebars.main:mustache_to_handlebars'
             ],
       },
+      extras_require={
+            'dev': [
+                  'pytest',
+                  'black',
+            ]
+      },
       python_requires='>=3.7',
 )

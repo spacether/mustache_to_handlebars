@@ -11,7 +11,7 @@ dist_source:
 	rm -rf *.egg-info
 
 develop:
-	pip3 install -e .
+	pip3 install -e .[dev]
 
 install:
 	pip3 install .
