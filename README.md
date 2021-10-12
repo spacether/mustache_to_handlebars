@@ -33,14 +33,34 @@ venv bin/activate
 # install the tool into it
 make install
 ```
-Invoke the tool per these options:
-mustache_to_handlebars [-h] [-out_dir OUT_DIR] [-handlebars_if_tags HANDLEBARS_IF_TAGS] [-handlebars_each_tags HANDLEBARS_EACH_TAGS]
+Invocations:
+```
+usage: mustache_to_handlebars [-h] [-out_dir OUT_DIR] [-handlebars_if_tags HANDLEBARS_IF_TAGS] [-handlebars_each_tags HANDLEBARS_EACH_TAGS]
                               [-handlebars_with_tags HANDLEBARS_WITH_TAGS] [-remove_whitespace_before_open] [-remove_whitespace_after_open]
-                              [-remove_whitespace_before_close] [-remove_whitespace_after_close] [-recursive RECURSIVE] [-delete_in_files DELETE_IN_FILES]
+                              [-remove_whitespace_before_close] [-remove_whitespace_after_close] [-only_in_dir] [-delete_in_files]
                               in_dir
-mustache_to_handlebars: error: the following arguments are required: in_dirNote:
-handlebars_if_tags/handlebars_each_tags/handlebars_with_tags must be a space delimited list of tags like:
-`-handlebars_if_tags='someTag anotherTag'`
+
+convert templates from mustache to handebars
+
+positional arguments:
+  in_dir                the folder containing your mustache templates
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -out_dir OUT_DIR      the folder to write the handlebars templates to. if unset in_dir will be used
+  -handlebars_if_tags HANDLEBARS_IF_TAGS
+                        a list of tags passed in a space delimited string like 'someTag anotherTag'
+  -handlebars_each_tags HANDLEBARS_EACH_TAGS
+                        a list of tags passed in a space delimited string like 'someTag anotherTag'
+  -handlebars_with_tags HANDLEBARS_WITH_TAGS
+                        a list of tags passed in a space delimited string like 'someTag anotherTag'
+  -remove_whitespace_before_open
+  -remove_whitespace_after_open
+  -remove_whitespace_before_close
+  -remove_whitespace_after_close
+  -only_in_dir          the program recurses through descendant directories by default, to only search in_dir, set this parameter
+  -delete_in_files      if passed, the mustache template files will be deleted
+```
 
 ## testing
 Install pytest in your virtual environment and then run make test

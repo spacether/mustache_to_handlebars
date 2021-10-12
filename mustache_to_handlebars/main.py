@@ -95,14 +95,23 @@ def __list_of_strings(space_delim_tags: str) -> typing.Set[str]:
 
 
 def __get_args():
+    __list_of_string_help = "a list of tags passed in a space delimited string like 'someTag anotherTag'"
     parser = argparse.ArgumentParser(
         description="convert templates from mustache to handebars"
     )
-    parser.add_argument("in_dir", type=__dir_path)
-    parser.add_argument("-out_dir", type=str)
-    parser.add_argument("-handlebars_if_tags", type=__list_of_strings, default=set())
-    parser.add_argument("-handlebars_each_tags", type=__list_of_strings, default=set())
-    parser.add_argument("-handlebars_with_tags", type=__list_of_strings, default=set())
+    parser.add_argument(
+        "in_dir",
+        type=__dir_path,
+        help="the folder containing your mustache templates",
+    )
+    parser.add_argument(
+        "-out_dir",
+        type=str,
+        help="the folder to write the handlebars templates to. if unset in_dir will be used",
+    )
+    parser.add_argument("-handlebars_if_tags", type=__list_of_strings, default=set(), help=__list_of_string_help)
+    parser.add_argument("-handlebars_each_tags", type=__list_of_strings, default=set(), help=__list_of_string_help)
+    parser.add_argument("-handlebars_with_tags", type=__list_of_strings, default=set(), help=__list_of_string_help)
     parser.add_argument(
         "-remove_whitespace_before_open", default=False, action="store_true"
     )
@@ -116,12 +125,17 @@ def __get_args():
         "-remove_whitespace_after_close", default=False, action="store_true"
     )
     parser.add_argument(
-        "-not_recursive",
+        "-only_in_dir",
         default=False,
         action="store_true",
-        description="the program recurses through descendent directories by default, to only search in_dir, set this parameter",
+        help="the program recurses through descendant directories by default, to only search in_dir, set this parameter",
     )
-    parser.add_argument("-delete_in_files", default=False, action="store_true")
+    parser.add_argument(
+        "-delete_in_files",
+        default=False,
+        action="store_true",
+        help="if passed, the mustache template files will be deleted",
+    )
     args = parser.parse_args()
     return args
 
@@ -357,7 +371,7 @@ def mustache_to_handlebars():
     in_dir, out_dir, recursive, delete_in_files = (
         args.in_dir,
         args.out_dir,
-        not args.not_recursive,
+        not args.only_in_dir,
         args.delete_in_files,
     )
     handlebars_if_tags, handlebars_each_tags, handlebars_with_tags = (
