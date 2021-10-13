@@ -12,6 +12,8 @@ HANDLEBARS_EXTENSION = "handlebars"
 HANDLEBARS_WHITESPACE_REMOVAL_CHAR = "~"
 HANDLEBARS_FIRST = "@first"
 HANDLEBARS_LAST = "@last"
+HANDLEBARS_IF_UNLESS_CLOSE_PATTERN = r"{{([#/].+?)}}"
+HANDLEBARS_VARIABLE_TAG = r"{{{(.+?)}}}"
 
 
 MUSTACHE_EXTENSION = "mustache"
@@ -39,6 +41,7 @@ class HandlebarsWhitespaceConfig:
     remove_whitespace_after_open: bool = False
     remove_whitespace_before_close: bool = False
     remove_whitespace_after_close: bool = False
+    indent_single_control_tag_to_adjacent_depth: bool = False
 
 
 class HandlebarsTagType(Enum):
@@ -134,13 +137,16 @@ def __get_args():
         "-remove_whitespace_before_open", default=False, action="store_true"
     )
     parser.add_argument(
-        "-remove_whitespace_after_open", default=False, action="store_true"
+        "-keeep_whitespace_after_open", default=False, action="store_true"
     )
     parser.add_argument(
-        "-remove_whitespace_before_close", default=False, action="store_true"
+        "-keep_whitespace_before_close", default=False, action="store_true"
     )
     parser.add_argument(
         "-remove_whitespace_after_close", default=False, action="store_true"
+    )
+    parser.add_argument(
+        "-omit_single_control_tag_indent_fix", default=False, action="store_true"
     )
     parser.add_argument(
         "-only_in_dir",
@@ -180,63 +186,65 @@ def _add_whitespace_handling(
     in_txt: str,
     whitespace_config: HandlebarsWhitespaceConfig,
 ) -> str:
+    """
+    for lines with only one control tag (if/each/with/unless/close) add whitespace collapsing characters
+    """
     lines = in_txt.split("\n")
     for i, line in enumerate(lines):
-        left_brace_count = line.count("{")
-        right_brace_count = line.count("{")
-        if left_brace_count != right_brace_count:
+        control_tags = set(re.findall(HANDLEBARS_IF_UNLESS_CLOSE_PATTERN, line))
+        if not control_tags:
             continue
-        if left_brace_count <= 1 or left_brace_count > 3:
+        if len(control_tags) != 1:
             continue
-        tag_open_count = line.count("{" * left_brace_count)
-        if not tag_open_count:
+        variable_tags = set(re.findall(HANDLEBARS_VARIABLE_TAG, line))
+        if variable_tags:
             continue
-        end_braces = "}" * left_brace_count
-        tag_close_count = line.count(end_braces)
-        if not tag_close_count:
-            continue
-        # there is only one tag on this line
-        suffix = line[-left_brace_count:]
-        line_ends_in_closing_braces = suffix == end_braces
-        if not line_ends_in_closing_braces:
+        # there is only one tag on this line and it is a control tag
+        try:
+            open_braces_index = line.index(TAG_OPEN)
+        except ValueError:
             continue
         try:
-            tag_type = MustacheTagType(line[left_brace_count])
-            if (
-                tag_type in {MustacheTagType.IF_EACH_WITH, MustacheTagType.UNLESS}
-            ):
-                pre_char = ''
-                post_char = ''
-                if whitespace_config.remove_whitespace_before_open:
-                    pre_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-                if whitespace_config.remove_whitespace_after_open:
-                    post_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-                lines[i] = (
-                    line[:left_brace_count]
-                    + pre_char
-                    + line[left_brace_count:-left_brace_count]
-                    + post_char
-                    + line[-left_brace_count:]
-                )
-            if (
-                tag_type is MustacheTagType.CLOSE
-            ):
-                pre_char = ''
-                post_char = ''
-                if whitespace_config.remove_whitespace_before_close:
-                    pre_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-                if whitespace_config.remove_whitespace_after_close:
-                    post_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-
-                lines[i] = (
-                    line[:left_brace_count]
-                    + pre_char
-                    + line[left_brace_count:-left_brace_count]
-                    + post_char
-                    + line[-left_brace_count:]
-                )
+            close_braces_index = line.index(TAG_CLOSE)
         except ValueError:
-            pass
+            continue
+
+        prefix = line[:open_braces_index]
+        suffix = line[close_braces_index+len(TAG_CLOSE):]
+
+        if prefix.strip() != '':
+            continue
+        if suffix.strip() != '':
+            continue
+        # line beginning and end contain only whitespace
+        tag = control_tags.pop()
+        tag_type = MustacheTagType(tag[0])
+        whitespace_before_char = ''
+        whitespace_after_char = ''
+        if tag_type in MustacheTagType.IF_EACH_WITH:
+            if whitespace_config.remove_whitespace_before_open:
+                whitespace_before_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+            if whitespace_config.remove_whitespace_after_open:
+                whitespace_after_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+            adjacent_line = lines[i+1]
+        elif tag_type is MustacheTagType.CLOSE:
+            if whitespace_config.remove_whitespace_before_close:
+                whitespace_before_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+            if whitespace_config.remove_whitespace_after_close:
+                whitespace_after_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+            adjacent_line = lines[i-1]
+        if whitespace_config.indent_single_control_tag_to_adjacent_depth:
+            prefix_whitespace = (len(adjacent_line) - len(adjacent_line.lstrip())) * ' '
+            prefix = prefix_whitespace
+        lines[i] = (
+            prefix
+            + TAG_OPEN
+            + whitespace_before_char
+            + tag
+            + whitespace_after_char
+            + TAG_CLOSE
+            + suffix
+        )
     return "\n".join(lines)
 
 
@@ -407,9 +415,10 @@ def mustache_to_handlebars():
     )
     whitespace_config = HandlebarsWhitespaceConfig(
         remove_whitespace_before_open=args.remove_whitespace_before_open,
-        remove_whitespace_after_open=args.remove_whitespace_after_open,
-        remove_whitespace_before_close=args.remove_whitespace_before_close,
+        remove_whitespace_after_open=not args.keep_whitespace_after_open,
+        remove_whitespace_before_close=not args.keep_whitespace_before_close,
         remove_whitespace_after_close=args.remove_whitespace_after_close,
+        indent_single_control_tag_to_adjacent_depth=not args.omit_single_control_tag_indent_fix
     )
     input_files_used_to_make_output_files, ambiguous_tags = _create_files(
         in_path_to_out_path, handlebars_tag_set, whitespace_config
