@@ -137,7 +137,7 @@ def __get_args():
         "-remove_whitespace_before_open", default=False, action="store_true"
     )
     parser.add_argument(
-        "-keeep_whitespace_after_open", default=False, action="store_true"
+        "-keep_whitespace_after_open", default=False, action="store_true"
     )
     parser.add_argument(
         "-keep_whitespace_before_close", default=False, action="store_true"
