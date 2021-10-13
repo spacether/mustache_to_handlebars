@@ -35,20 +35,6 @@ class TestHelpers(unittest.TestCase):
             },
         )
 
-    def test_get_mustache_partial_paths(self):
-        in_file_to_out_file_map = {
-            "tests/in_dir/api.mustache": "tests/in_dir/api.handlebars",
-            "tests/in_dir/model_templates/imports.mustache": "tests/in_dir/model_templates/imports.handlebars",
-            "tests/in_dir/partial_header.mustache": "tests/in_dir/partial_header.handlebars",
-        }
-
-        mustache_partial_paths = main._get_mustache_partial_paths(
-            in_file_to_out_file_map, self.in_dir
-        )
-        self.assertEqual(
-            mustache_partial_paths, {"tests/in_dir/partial_header.mustache"}
-        )
-
     def test_create_files(self):
         in_file_to_out_file_map = main._get_in_file_to_out_file_map(
             in_dir=self.in_dir, out_dir=self.in_dir, recursive=False
@@ -58,18 +44,11 @@ class TestHelpers(unittest.TestCase):
             each_tags=set(),
             with_tags=set(),
         )
-        whitespace_config = main.HandlebarsWhitespaceConfig()
-        partial_whitespace_config = main.HandlebarsWhitespaceConfig(
+        whitespace_config = main.HandlebarsWhitespaceConfig(
             remove_whitespace_after_open=True
         )
-        in_path_to_whitespace_config = main._get_in_path_to_whitespace_config(
-            self.in_dir,
-            in_file_to_out_file_map,
-            whitespace_config,
-            partial_whitespace_config,
-        )
         main._create_files(
-            in_file_to_out_file_map, handlebars_tag_set, in_path_to_whitespace_config
+            in_file_to_out_file_map, handlebars_tag_set, whitespace_config
         )
         in_handebars_path_pattern = os.path.join(
             "tests", "in_dir", "*.{}".format(main.HANDLEBARS_EXTENSION)

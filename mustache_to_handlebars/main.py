@@ -142,31 +142,6 @@ def __get_args():
     parser.add_argument(
         "-remove_whitespace_after_close", default=False, action="store_true"
     )
-    partial_help = "whitespace control for partial files"
-    parser.add_argument(
-        "-partial_remove_whitespace_before_open",
-        default=False,
-        action="store_true",
-        help=partial_help,
-    )
-    parser.add_argument(
-        "-partial_remove_whitespace_after_open",
-        default=False,
-        action="store_true",
-        help=partial_help,
-    )
-    parser.add_argument(
-        "-partial_remove_whitespace_before_close",
-        default=False,
-        action="store_true",
-        help=partial_help,
-    )
-    parser.add_argument(
-        "-partial_remove_whitespace_after_close",
-        default=False,
-        action="store_true",
-        help=partial_help,
-    )
     parser.add_argument(
         "-only_in_dir",
         default=False,
@@ -328,7 +303,7 @@ def _convert_handlebars_to_mustache(
 def _create_files(
     in_path_to_out_path: dict,
     handlebars_tag_set: HandlebarTagSet,
-    in_path_to_whitespace_config: dict[str, HandlebarsWhitespaceConfig],
+    whitespace_config: HandlebarsWhitespaceConfig,
 ) -> typing.Tuple[typing.List[str], typing.Set[str]]:
     existing_out_folders = set()
     ambiguous_tags = set()
@@ -342,7 +317,6 @@ def _create_files(
         with open(in_path) as file:
             in_txt = file.read()
 
-        whitespace_config = in_path_to_whitespace_config[in_path]
         out_txt, file_ambiguous_tags = _convert_handlebars_to_mustache(
             in_txt, handlebars_tag_set, whitespace_config
         )
@@ -407,42 +381,6 @@ def __handle_ambiguous_tags(ambiguous_tags: typing.Set[str], qty_skipped_files: 
     print('-handlebars_with_tags="{}"\n'.format(" ".join(suspected_with_tags)))
 
 
-def _get_mustache_partial_paths(
-    in_path_to_out_path: dict[str, str], in_dir: str
-) -> set[str]:
-    partial_paths = set()
-
-    def path_maker(partial: str):
-        return os.path.join(in_dir, "{}.{}".format(partial, MUSTACHE_EXTENSION))
-
-    for in_path in in_path_to_out_path:
-        with open(in_path) as file:
-            in_txt = file.read()
-            file_partial_paths = set(
-                path_maker(partial)
-                for partial in re.findall(MUSTACHE_PARTIAL_PATTERN, in_txt)
-            )
-            partial_paths.update(file_partial_paths)
-
-    return partial_paths
-
-
-def _get_in_path_to_whitespace_config(
-    in_dir: str,
-    in_path_to_out_path: dict[str, str],
-    whitespace_config: HandlebarsWhitespaceConfig,
-    partial_whitespace_config: HandlebarsWhitespaceConfig,
-) -> dict[str, HandlebarsWhitespaceConfig]:
-    partial_paths = _get_mustache_partial_paths(in_path_to_out_path, in_dir)
-    in_path_to_whitespace_config = {}
-    for in_path in in_path_to_out_path:
-        if in_path in partial_paths:
-            in_path_to_whitespace_config[in_path] = partial_whitespace_config
-            continue
-        in_path_to_whitespace_config[in_path] = whitespace_config
-    return in_path_to_whitespace_config
-
-
 def mustache_to_handlebars():
     args = __get_args()
     in_dir, out_dir, recursive, delete_in_files = (
@@ -473,17 +411,8 @@ def mustache_to_handlebars():
         remove_whitespace_before_close=args.remove_whitespace_before_close,
         remove_whitespace_after_close=args.remove_whitespace_after_close,
     )
-    partial_whitespace_config = HandlebarsWhitespaceConfig(
-        remove_whitespace_before_open=args.partial_remove_whitespace_before_open,
-        remove_whitespace_after_open=args.partial_remove_whitespace_after_open,
-        remove_whitespace_before_close=args.partial_remove_whitespace_before_close,
-        remove_whitespace_after_close=args.partial_remove_whitespace_after_close,
-    )
-    in_path_to_whitespace_config = _get_in_path_to_whitespace_config(
-        in_dir, in_path_to_out_path, whitespace_config, partial_whitespace_config
-    )
     input_files_used_to_make_output_files, ambiguous_tags = _create_files(
-        in_path_to_out_path, handlebars_tag_set, in_path_to_whitespace_config
+        in_path_to_out_path, handlebars_tag_set, whitespace_config
     )
 
     if ambiguous_tags:
