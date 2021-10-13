@@ -229,38 +229,35 @@ def _add_whitespace_handling(
             tag_type = MustacheTagType(line[left_brace_count])
             if (
                 tag_type in {MustacheTagType.IF_EACH_WITH, MustacheTagType.UNLESS}
-                and whitespace_config.remove_whitespace_before_open
             ):
+                pre_char = ''
+                post_char = ''
+                if whitespace_config.remove_whitespace_before_open:
+                    pre_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+                if whitespace_config.remove_whitespace_after_open:
+                    post_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
                 lines[i] = (
                     line[:left_brace_count]
-                    + HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-                    + line[left_brace_count:]
-                )
-            if (
-                tag_type in {MustacheTagType.IF_EACH_WITH, MustacheTagType.UNLESS}
-                and whitespace_config.remove_whitespace_after_open
-            ):
-                lines[i] = (
-                    line[:-left_brace_count]
-                    + HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+                    + pre_char
+                    + line[left_brace_count:-left_brace_count]
+                    + post_char
                     + line[-left_brace_count:]
                 )
             if (
                 tag_type is MustacheTagType.CLOSE
-                and whitespace_config.remove_whitespace_before_close
             ):
+                pre_char = ''
+                post_char = ''
+                if whitespace_config.remove_whitespace_before_close:
+                    pre_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+                if whitespace_config.remove_whitespace_after_close:
+                    post_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+
                 lines[i] = (
                     line[:left_brace_count]
-                    + HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-                    + line[left_brace_count:]
-                )
-            if (
-                tag_type is MustacheTagType.CLOSE
-                and whitespace_config.remove_whitespace_after_close
-            ):
-                lines[i] = (
-                    line[:-left_brace_count]
-                    + HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+                    + pre_char
+                    + line[left_brace_count:-left_brace_count]
+                    + post_char
                     + line[-left_brace_count:]
                 )
         except ValueError:
