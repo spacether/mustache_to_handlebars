@@ -96,7 +96,9 @@ def __list_of_strings(space_delim_tags: str) -> typing.Set[str]:
 
 
 def __get_args():
-    __list_of_string_help = "a list of tags passed in a space delimited string like 'someTag anotherTag'"
+    __list_of_string_help = (
+        "a list of tags passed in a space delimited string like 'someTag anotherTag'"
+    )
     parser = argparse.ArgumentParser(
         description="convert templates from mustache to handebars"
     )
@@ -110,9 +112,24 @@ def __get_args():
         type=str,
         help="the folder to write the handlebars templates to. if unset in_dir will be used",
     )
-    parser.add_argument("-handlebars_if_tags", type=__list_of_strings, default=set(), help=__list_of_string_help)
-    parser.add_argument("-handlebars_each_tags", type=__list_of_strings, default=set(), help=__list_of_string_help)
-    parser.add_argument("-handlebars_with_tags", type=__list_of_strings, default=set(), help=__list_of_string_help)
+    parser.add_argument(
+        "-handlebars_if_tags",
+        type=__list_of_strings,
+        default=set(),
+        help=__list_of_string_help,
+    )
+    parser.add_argument(
+        "-handlebars_each_tags",
+        type=__list_of_strings,
+        default=set(),
+        help=__list_of_string_help,
+    )
+    parser.add_argument(
+        "-handlebars_with_tags",
+        type=__list_of_strings,
+        default=set(),
+        help=__list_of_string_help,
+    )
     parser.add_argument(
         "-remove_whitespace_before_open", default=False, action="store_true"
     )
@@ -124,6 +141,31 @@ def __get_args():
     )
     parser.add_argument(
         "-remove_whitespace_after_close", default=False, action="store_true"
+    )
+    partial_help = "whitespace control for partial files"
+    parser.add_argument(
+        "-partial_remove_whitespace_before_open",
+        default=False,
+        action="store_true",
+        help=partial_help,
+    )
+    parser.add_argument(
+        "-partial_remove_whitespace_after_open",
+        default=False,
+        action="store_true",
+        help=partial_help,
+    )
+    parser.add_argument(
+        "-partial_remove_whitespace_before_close",
+        default=False,
+        action="store_true",
+        help=partial_help,
+    )
+    parser.add_argument(
+        "-partial_remove_whitespace_after_close",
+        default=False,
+        action="store_true",
+        help=partial_help,
     )
     parser.add_argument(
         "-only_in_dir",
@@ -289,7 +331,7 @@ def _convert_handlebars_to_mustache(
 def _create_files(
     in_path_to_out_path: dict,
     handlebars_tag_set: HandlebarTagSet,
-    whitespace_config: HandlebarsWhitespaceConfig,
+    in_path_to_whitespace_config: dict[str, HandlebarsWhitespaceConfig],
 ) -> typing.Tuple[typing.List[str], typing.Set[str]]:
     existing_out_folders = set()
     ambiguous_tags = set()
@@ -303,6 +345,7 @@ def _create_files(
         with open(in_path) as file:
             in_txt = file.read()
 
+        whitespace_config = in_path_to_whitespace_config[in_path]
         out_txt, file_ambiguous_tags = _convert_handlebars_to_mustache(
             in_txt, handlebars_tag_set, whitespace_config
         )
@@ -366,19 +409,42 @@ def __handle_ambiguous_tags(ambiguous_tags: typing.Set[str], qty_skipped_files: 
     print('-handlebars_each_tags="{}"\n'.format(" ".join(suspected_each_tags)))
     print('-handlebars_with_tags="{}"\n'.format(" ".join(suspected_with_tags)))
 
-def _get_mustache_partial_paths(in_path_to_out_path: dict[str, str], in_dir: str) -> set[str]:
+
+def _get_mustache_partial_paths(
+    in_path_to_out_path: dict[str, str], in_dir: str
+) -> set[str]:
     partial_paths = set()
 
     def path_maker(partial: str):
-        return os.path.join(in_dir, '{}.{}'.format(partial, MUSTACHE_EXTENSION))
+        return os.path.join(in_dir, "{}.{}".format(partial, MUSTACHE_EXTENSION))
 
     for in_path in in_path_to_out_path:
         with open(in_path) as file:
             in_txt = file.read()
-            file_partial_paths = set(path_maker(partial) for partial in re.findall(MUSTACHE_PARTIAL_PATTERN, in_txt))
+            file_partial_paths = set(
+                path_maker(partial)
+                for partial in re.findall(MUSTACHE_PARTIAL_PATTERN, in_txt)
+            )
             partial_paths.update(file_partial_paths)
 
     return partial_paths
+
+
+def _get_in_path_to_whitespace_config(
+    in_dir: str,
+    in_path_to_out_path: dict[str, str],
+    whitespace_config: HandlebarsWhitespaceConfig,
+    partial_whitespace_config: HandlebarsWhitespaceConfig,
+) -> dict[str, HandlebarsWhitespaceConfig]:
+    partial_paths = _get_mustache_partial_paths(in_path_to_out_path, in_dir)
+    in_path_to_whitespace_config = {}
+    for in_path in in_path_to_out_path:
+        if in_path in partial_paths:
+            in_path_to_whitespace_config[in_path] = partial_whitespace_config
+            continue
+        in_path_to_whitespace_config[in_path] = whitespace_config
+    return in_path_to_whitespace_config
+
 
 def mustache_to_handlebars():
     args = __get_args()
@@ -399,7 +465,6 @@ def mustache_to_handlebars():
         out_dir = in_dir
 
     in_path_to_out_path = _get_in_file_to_out_file_map(in_dir, out_dir, recursive)
-    _mustache_partial_paths = _get_mustache_partial_paths(in_path_to_out_path, in_dir)
     handlebars_tag_set = HandlebarTagSet(
         if_tags=handlebars_if_tags,
         each_tags=handlebars_each_tags,
@@ -411,8 +476,17 @@ def mustache_to_handlebars():
         remove_whitespace_before_close=args.remove_whitespace_before_close,
         remove_whitespace_after_close=args.remove_whitespace_after_close,
     )
+    partial_whitespace_config = HandlebarsWhitespaceConfig(
+        remove_whitespace_before_open=args.partial_remove_whitespace_before_open,
+        remove_whitespace_after_open=args.partial_remove_whitespace_after_open,
+        remove_whitespace_before_close=args.partial_remove_whitespace_before_close,
+        remove_whitespace_after_close=args.partial_remove_whitespace_after_close,
+    )
+    in_path_to_whitespace_config = _get_in_path_to_whitespace_config(
+        in_dir, in_path_to_out_path, whitespace_config, partial_whitespace_config
+    )
     input_files_used_to_make_output_files, ambiguous_tags = _create_files(
-        in_path_to_out_path, handlebars_tag_set, whitespace_config
+        in_path_to_out_path, handlebars_tag_set, in_path_to_whitespace_config
     )
 
     if ambiguous_tags:
