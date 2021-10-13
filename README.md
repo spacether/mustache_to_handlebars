@@ -37,7 +37,9 @@ Invocations:
 ```
 usage: mustache_to_handlebars [-h] [-out_dir OUT_DIR] [-handlebars_if_tags HANDLEBARS_IF_TAGS] [-handlebars_each_tags HANDLEBARS_EACH_TAGS]
                               [-handlebars_with_tags HANDLEBARS_WITH_TAGS] [-remove_whitespace_before_open] [-remove_whitespace_after_open]
-                              [-remove_whitespace_before_close] [-remove_whitespace_after_close] [-only_in_dir] [-delete_in_files]
+                              [-remove_whitespace_before_close] [-remove_whitespace_after_close] [-partial_remove_whitespace_before_open]
+                              [-partial_remove_whitespace_after_open] [-partial_remove_whitespace_before_close] [-partial_remove_whitespace_after_close] [-only_in_dir]
+                              [-delete_in_files]
                               in_dir
 
 convert templates from mustache to handebars
@@ -58,6 +60,14 @@ optional arguments:
   -remove_whitespace_after_open
   -remove_whitespace_before_close
   -remove_whitespace_after_close
+  -partial_remove_whitespace_before_open
+                        whitespace control for partial files
+  -partial_remove_whitespace_after_open
+                        whitespace control for partial files
+  -partial_remove_whitespace_before_close
+                        whitespace control for partial files
+  -partial_remove_whitespace_after_close
+                        whitespace control for partial files
   -only_in_dir          the program recurses through descendant directories by default, to only search in_dir, set this parameter
   -delete_in_files      if passed, the mustache template files will be deleted
 ```
