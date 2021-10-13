@@ -12,6 +12,8 @@ HANDLEBARS_EXTENSION = "handlebars"
 HANDLEBARS_WHITESPACE_REMOVAL_CHAR = "~"
 HANDLEBARS_FIRST = "@first"
 HANDLEBARS_LAST = "@last"
+HANDLEBARS_IF_UNLESS_CLOSE_PATTERN = r"{{([#/].+?)}}"
+HANDLEBARS_VARIABLE_TAG = r"{{{(.+?)}}}"
 
 
 MUSTACHE_EXTENSION = "mustache"
@@ -131,41 +133,16 @@ def __get_args():
         help=__list_of_string_help,
     )
     parser.add_argument(
-        "-remove_whitespace_before_open", default=False, action="store_true"
+        "-keep_whitespace_before_open", default=False, action="store_true"
     )
     parser.add_argument(
         "-remove_whitespace_after_open", default=False, action="store_true"
     )
     parser.add_argument(
-        "-remove_whitespace_before_close", default=False, action="store_true"
+        "-keep_whitespace_before_close", default=False, action="store_true"
     )
     parser.add_argument(
         "-remove_whitespace_after_close", default=False, action="store_true"
-    )
-    partial_help = "whitespace control for partial files"
-    parser.add_argument(
-        "-partial_remove_whitespace_before_open",
-        default=False,
-        action="store_true",
-        help=partial_help,
-    )
-    parser.add_argument(
-        "-partial_remove_whitespace_after_open",
-        default=False,
-        action="store_true",
-        help=partial_help,
-    )
-    parser.add_argument(
-        "-partial_remove_whitespace_before_close",
-        default=False,
-        action="store_true",
-        help=partial_help,
-    )
-    parser.add_argument(
-        "-partial_remove_whitespace_after_close",
-        default=False,
-        action="store_true",
-        help=partial_help,
     )
     parser.add_argument(
         "-only_in_dir",
@@ -205,66 +182,60 @@ def _add_whitespace_handling(
     in_txt: str,
     whitespace_config: HandlebarsWhitespaceConfig,
 ) -> str:
+    """
+    for lines with only one control tag (if/each/with/unless/close) add whitespace collapsing characters
+    """
     lines = in_txt.split("\n")
     for i, line in enumerate(lines):
-        left_brace_count = line.count("{")
-        right_brace_count = line.count("{")
-        if left_brace_count != right_brace_count:
+        control_tags = set(re.findall(HANDLEBARS_IF_UNLESS_CLOSE_PATTERN, line))
+        if not control_tags:
             continue
-        if left_brace_count <= 1 or left_brace_count > 3:
+        if len(control_tags) != 1:
             continue
-        tag_open_count = line.count("{" * left_brace_count)
-        if not tag_open_count:
+        variable_tags = set(re.findall(HANDLEBARS_VARIABLE_TAG, line))
+        if variable_tags:
             continue
-        end_braces = "}" * left_brace_count
-        tag_close_count = line.count(end_braces)
-        if not tag_close_count:
-            continue
-        # there is only one tag on this line
-        suffix = line[-left_brace_count:]
-        line_ends_in_closing_braces = suffix == end_braces
-        if not line_ends_in_closing_braces:
+        # there is only one tag on this line and it is a control tag
+        try:
+            open_braces_index = line.index(TAG_OPEN)
+        except ValueError:
             continue
         try:
-            tag_type = MustacheTagType(line[left_brace_count])
-            if (
-                tag_type in {MustacheTagType.IF_EACH_WITH, MustacheTagType.UNLESS}
-                and whitespace_config.remove_whitespace_before_open
-            ):
-                lines[i] = (
-                    line[:left_brace_count]
-                    + HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-                    + line[left_brace_count:]
-                )
-            if (
-                tag_type in {MustacheTagType.IF_EACH_WITH, MustacheTagType.UNLESS}
-                and whitespace_config.remove_whitespace_after_open
-            ):
-                lines[i] = (
-                    line[:-left_brace_count]
-                    + HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-                    + line[-left_brace_count:]
-                )
-            if (
-                tag_type is MustacheTagType.CLOSE
-                and whitespace_config.remove_whitespace_before_close
-            ):
-                lines[i] = (
-                    line[:left_brace_count]
-                    + HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-                    + line[left_brace_count:]
-                )
-            if (
-                tag_type is MustacheTagType.CLOSE
-                and whitespace_config.remove_whitespace_after_close
-            ):
-                lines[i] = (
-                    line[:-left_brace_count]
-                    + HANDLEBARS_WHITESPACE_REMOVAL_CHAR
-                    + line[-left_brace_count:]
-                )
+            close_braces_index = line.index(TAG_CLOSE)
         except ValueError:
-            pass
+            continue
+
+        prefix = line[:open_braces_index]
+        suffix = line[close_braces_index+len(TAG_CLOSE):]
+
+        if prefix.strip() != '':
+            continue
+        if suffix.strip() != '':
+            continue
+        # line beginning and end contain only whitespace
+        tag = control_tags.pop()
+        tag_type = MustacheTagType(tag[0])
+        whitespace_before_char = ''
+        whitespace_after_char = ''
+        if tag_type in MustacheTagType.IF_EACH_WITH:
+            if whitespace_config.remove_whitespace_before_open:
+                whitespace_before_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+            if whitespace_config.remove_whitespace_after_open:
+                whitespace_after_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+        elif tag_type is MustacheTagType.CLOSE:
+            if whitespace_config.remove_whitespace_before_close:
+                whitespace_before_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+            if whitespace_config.remove_whitespace_after_close:
+                whitespace_after_char = HANDLEBARS_WHITESPACE_REMOVAL_CHAR
+        lines[i] = (
+            prefix
+            + TAG_OPEN
+            + whitespace_before_char
+            + tag
+            + whitespace_after_char
+            + TAG_CLOSE
+            + suffix
+        )
     return "\n".join(lines)
 
 
@@ -331,7 +302,7 @@ def _convert_handlebars_to_mustache(
 def _create_files(
     in_path_to_out_path: dict,
     handlebars_tag_set: HandlebarTagSet,
-    in_path_to_whitespace_config: dict[str, HandlebarsWhitespaceConfig],
+    whitespace_config: HandlebarsWhitespaceConfig,
 ) -> typing.Tuple[typing.List[str], typing.Set[str]]:
     existing_out_folders = set()
     ambiguous_tags = set()
@@ -345,7 +316,6 @@ def _create_files(
         with open(in_path) as file:
             in_txt = file.read()
 
-        whitespace_config = in_path_to_whitespace_config[in_path]
         out_txt, file_ambiguous_tags = _convert_handlebars_to_mustache(
             in_txt, handlebars_tag_set, whitespace_config
         )
@@ -410,42 +380,6 @@ def __handle_ambiguous_tags(ambiguous_tags: typing.Set[str], qty_skipped_files: 
     print('-handlebars_with_tags="{}"\n'.format(" ".join(suspected_with_tags)))
 
 
-def _get_mustache_partial_paths(
-    in_path_to_out_path: dict[str, str], in_dir: str
-) -> set[str]:
-    partial_paths = set()
-
-    def path_maker(partial: str):
-        return os.path.join(in_dir, "{}.{}".format(partial, MUSTACHE_EXTENSION))
-
-    for in_path in in_path_to_out_path:
-        with open(in_path) as file:
-            in_txt = file.read()
-            file_partial_paths = set(
-                path_maker(partial)
-                for partial in re.findall(MUSTACHE_PARTIAL_PATTERN, in_txt)
-            )
-            partial_paths.update(file_partial_paths)
-
-    return partial_paths
-
-
-def _get_in_path_to_whitespace_config(
-    in_dir: str,
-    in_path_to_out_path: dict[str, str],
-    whitespace_config: HandlebarsWhitespaceConfig,
-    partial_whitespace_config: HandlebarsWhitespaceConfig,
-) -> dict[str, HandlebarsWhitespaceConfig]:
-    partial_paths = _get_mustache_partial_paths(in_path_to_out_path, in_dir)
-    in_path_to_whitespace_config = {}
-    for in_path in in_path_to_out_path:
-        if in_path in partial_paths:
-            in_path_to_whitespace_config[in_path] = partial_whitespace_config
-            continue
-        in_path_to_whitespace_config[in_path] = whitespace_config
-    return in_path_to_whitespace_config
-
-
 def mustache_to_handlebars():
     args = __get_args()
     in_dir, out_dir, recursive, delete_in_files = (
@@ -471,22 +405,13 @@ def mustache_to_handlebars():
         with_tags=handlebars_with_tags,
     )
     whitespace_config = HandlebarsWhitespaceConfig(
-        remove_whitespace_before_open=args.remove_whitespace_before_open,
+        remove_whitespace_before_open=not args.keep_whitespace_before_open,
         remove_whitespace_after_open=args.remove_whitespace_after_open,
-        remove_whitespace_before_close=args.remove_whitespace_before_close,
+        remove_whitespace_before_close=not args.keep_whitespace_before_close,
         remove_whitespace_after_close=args.remove_whitespace_after_close,
     )
-    partial_whitespace_config = HandlebarsWhitespaceConfig(
-        remove_whitespace_before_open=args.partial_remove_whitespace_before_open,
-        remove_whitespace_after_open=args.partial_remove_whitespace_after_open,
-        remove_whitespace_before_close=args.partial_remove_whitespace_before_close,
-        remove_whitespace_after_close=args.partial_remove_whitespace_after_close,
-    )
-    in_path_to_whitespace_config = _get_in_path_to_whitespace_config(
-        in_dir, in_path_to_out_path, whitespace_config, partial_whitespace_config
-    )
     input_files_used_to_make_output_files, ambiguous_tags = _create_files(
-        in_path_to_out_path, handlebars_tag_set, in_path_to_whitespace_config
+        in_path_to_out_path, handlebars_tag_set, whitespace_config
     )
 
     if ambiguous_tags:
