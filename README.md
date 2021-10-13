@@ -23,6 +23,10 @@ So in handlebars, a mustache #someTag can be #if someTag, #each someTag, or #wit
   - -handlebars_each_tags
   - -handlebars_with_tags
 
+Features that have not yet been implemented:
+- fixing array index references
+- replacing {{.}} or {{{.}}} references with the enclosing tag variable
+
 ## Usage
 Clone this repo
 ```
@@ -36,10 +40,8 @@ make install
 Invocations:
 ```
 usage: mustache_to_handlebars [-h] [-out_dir OUT_DIR] [-handlebars_if_tags HANDLEBARS_IF_TAGS] [-handlebars_each_tags HANDLEBARS_EACH_TAGS]
-                              [-handlebars_with_tags HANDLEBARS_WITH_TAGS] [-remove_whitespace_before_open] [-remove_whitespace_after_open]
-                              [-remove_whitespace_before_close] [-remove_whitespace_after_close] [-partial_remove_whitespace_before_open]
-                              [-partial_remove_whitespace_after_open] [-partial_remove_whitespace_before_close] [-partial_remove_whitespace_after_close] [-only_in_dir]
-                              [-delete_in_files]
+                              [-handlebars_with_tags HANDLEBARS_WITH_TAGS] [-keep_whitespace_before_open] [-remove_whitespace_after_open]
+                              [-keep_whitespace_before_close] [-remove_whitespace_after_close] [-only_in_dir] [-delete_in_files]
                               in_dir
 
 convert templates from mustache to handebars
@@ -56,18 +58,10 @@ optional arguments:
                         a list of tags passed in a space delimited string like 'someTag anotherTag'
   -handlebars_with_tags HANDLEBARS_WITH_TAGS
                         a list of tags passed in a space delimited string like 'someTag anotherTag'
-  -remove_whitespace_before_open
+  -keep_whitespace_before_open
   -remove_whitespace_after_open
-  -remove_whitespace_before_close
+  -keep_whitespace_before_close
   -remove_whitespace_after_close
-  -partial_remove_whitespace_before_open
-                        whitespace control for partial files
-  -partial_remove_whitespace_after_open
-                        whitespace control for partial files
-  -partial_remove_whitespace_before_close
-                        whitespace control for partial files
-  -partial_remove_whitespace_after_close
-                        whitespace control for partial files
   -only_in_dir          the program recurses through descendant directories by default, to only search in_dir, set this parameter
   -delete_in_files      if passed, the mustache template files will be deleted
 ```
