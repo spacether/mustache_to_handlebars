@@ -13,9 +13,11 @@ HANDLEBARS_WHITESPACE_REMOVAL_CHAR = "~"
 HANDLEBARS_FIRST = "@first"
 HANDLEBARS_LAST = "@last"
 HANDLEBARS_IF_UNLESS_CLOSE_PATTERN = r"{{([#/].+?)}}"
-HANDLEBARS_VARIABLE_TAG = r"{{{(.+?)}}}"
+# for {{ or {{ variables that are not control tags
+HANDLEBARS_VARIABLE_TAG = r"{{2,3}([^#/{]+?)}{2,3}"
 
-
+# for {{ or {{ variables that are not control tags
+MUSTACHE_VARIABLE_TAG = r"{{2,3}([^#/{^]+?)}{2,3}"
 MUSTACHE_EXTENSION = "mustache"
 MUSTACHE_IF_UNLESS_CLOSE_PATTERN = r"{{([#^/].+?)}}"
 MUSTACHE_PARTIAL_PATTERN = r"{{>\s?(.+?)\s?}}"
@@ -73,6 +75,22 @@ def __get_handlebars_tag_type(
     return None
 
 
+def __mustache_to_handlebars_array_index_tag(in_tag: str) -> str:
+    dot_pieces = in_tag.split('.')
+    if len(dot_pieces) == 1:
+        return in_tag
+    contains_digit = False
+    for i, piece in enumerate(dot_pieces):
+        if piece.isdigit():
+            contains_digit = True
+            dot_pieces[i] = '[{}]'.format(piece)
+    if not contains_digit:
+        return in_tag
+    out_tag = '.'.join(dot_pieces)
+    MUSTACHE_TO_HANDLEBARS_TAG[in_tag] = out_tag
+    return out_tag
+
+
 def __mustache_to_handlebars_tag_element(mustache_tag_element: str) -> str:
     """
     '-first' -> '@first'
@@ -80,7 +98,8 @@ def __mustache_to_handlebars_tag_element(mustache_tag_element: str) -> str:
     """
     handlebars_tag_element = MUSTACHE_TO_HANDLEBARS_TAG.get(mustache_tag_element)
     if handlebars_tag_element is None:
-        return mustache_tag_element
+        handlebars_tag_element = __mustache_to_handlebars_array_index_tag(mustache_tag_element)
+        return handlebars_tag_element
     return handlebars_tag_element
 
 
@@ -239,11 +258,21 @@ def _add_whitespace_handling(
     return "\n".join(lines)
 
 
+def __mustache_to_handlebars_variable_tag_replacer(match: re.Match) -> str:
+    full_match = match.group(0)
+    pattern_str = match.group(1)
+    index = full_match.index(pattern_str)
+    prefix = full_match[:index]
+    suffix = full_match[index+len(pattern_str):]
+    return prefix + __mustache_to_handlebars_tag_element(pattern_str) + suffix
+
+
 def _convert_handlebars_to_mustache(
     in_txt: str,
     handlebars_tag_set: HandlebarTagSet,
     whitespace_config: HandlebarsWhitespaceConfig,
 ) -> typing.Tuple[str, typing.Set[str]]:
+    in_txt = re.sub(MUSTACHE_VARIABLE_TAG, __mustache_to_handlebars_variable_tag_replacer, in_txt)
     # extract all control tags from {{#someTag}} and {{/someTag}} patterns
     tags = set(re.findall(MUSTACHE_IF_UNLESS_CLOSE_PATTERN, in_txt))
     ambiguous_tags = set()
