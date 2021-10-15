@@ -23,8 +23,12 @@ So in handlebars, a mustache #someTag can be #if someTag, #each someTag, or #wit
   - -handlebars_each_tags
   - -handlebars_with_tags
 
+Replaces array index tags
+- {{myArray.0}} -> {{myArray.[0]}}
+- {{{myArray.0}}} -> {{{myArray.[0]}}}
+- {{#myArray.0}} -> {{#if myArray.[0]}} if you define myArray[0] as a handlebars_if_tag
+
 Features that have not yet been implemented:
-- fixing array index references
 - replacing {{.}} or {{{.}}} references with the enclosing tag variable
 
 ## Usage

@@ -7,6 +7,7 @@ import mustache_to_handlebars.main as main
 
 class TestHelpers(unittest.TestCase):
     in_dir = os.path.join("tests", "in_dir")
+    empty_set = set()
 
     def test_get_in_file_to_out_file_map_not_recursive(self):
         in_file_to_out_file_map = main._get_in_file_to_out_file_map(
@@ -41,8 +42,8 @@ class TestHelpers(unittest.TestCase):
         )
         handlebars_tag_set = main.HandlebarTagSet(
             if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, 'appName', 'appDescription', 'version', 'infoEmail'},
-            each_tags=set(),
-            with_tags=set(),
+            each_tags=self.empty_set,
+            with_tags=self.empty_set,
         )
         whitespace_config = main.HandlebarsWhitespaceConfig(
             remove_whitespace_before_open=True,
@@ -103,8 +104,8 @@ class TestHelpers(unittest.TestCase):
         )
         handlebars_tag_set = main.HandlebarTagSet(
             if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST},
-            each_tags=set(),
-            with_tags=set(),
+            each_tags=self.empty_set,
+            with_tags=self.empty_set,
         )
         whitespace_config = main.HandlebarsWhitespaceConfig()
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
@@ -122,7 +123,7 @@ class TestHelpers(unittest.TestCase):
                 "{{/unless}}",
             ]
         )
-        expected_ambiguous_tags = set()
+        expected_ambiguous_tags = self.empty_set
         self.assertEqual(out_txt, expected_out_txt)
         self.assertEqual(ambiguous_tags, expected_ambiguous_tags)
 
@@ -136,8 +137,8 @@ class TestHelpers(unittest.TestCase):
 
         handlebars_tag_set = main.HandlebarTagSet(
             if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, "a"},
-            each_tags=set(),
-            with_tags=set(),
+            each_tags=self.empty_set,
+            with_tags=self.empty_set,
         )
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
             in_txt,
@@ -151,7 +152,7 @@ class TestHelpers(unittest.TestCase):
             ]
         )
         self.assertEqual(out_txt, expected_out_txt)
-        self.assertEqual(ambiguous_tags, set())
+        self.assertEqual(ambiguous_tags, self.empty_set)
 
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
             in_txt,
@@ -201,8 +202,8 @@ class TestHelpers(unittest.TestCase):
 
         handlebars_tag_set = main.HandlebarTagSet(
             if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, "a"},
-            each_tags=set(),
-            with_tags=set(),
+            each_tags=self.empty_set,
+            with_tags=self.empty_set,
         )
         whitespace_config = main.HandlebarsWhitespaceConfig()
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
@@ -215,7 +216,61 @@ class TestHelpers(unittest.TestCase):
                 "{{#if a}}{{#if a}}{{/if}}{{/if}}",
             ]
         )
-        expected_ambiguous_tags = set()
+        expected_ambiguous_tags = self.empty_set
+        self.assertEqual(out_txt, expected_out_txt)
+        self.assertEqual(ambiguous_tags, expected_ambiguous_tags)
+
+    def test_convert_handlebars_to_mustache_control_with_array_index(self):
+        in_txt = "\n".join(
+            [
+                "{{#myList.0}}blah{{/myList.0}}",
+            ]
+        )
+
+        handlebars_tag_set = main.HandlebarTagSet(
+            if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, "myList.[0]"},
+            each_tags=self.empty_set,
+            with_tags=self.empty_set,
+        )
+        whitespace_config = main.HandlebarsWhitespaceConfig()
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            whitespace_config,
+        )
+        expected_out_txt = "\n".join(
+            [
+                "{{#if myList.[0]}}blah{{/if}}",
+            ]
+        )
+        expected_ambiguous_tags = self.empty_set
+        self.assertEqual(out_txt, expected_out_txt)
+        self.assertEqual(ambiguous_tags, expected_ambiguous_tags)
+
+    def test_convert_handlebars_to_mustache_with_array_index(self):
+        in_txt = "\n".join(
+            [
+                "{{myList.0}}{{{myList.0}}}",
+            ]
+        )
+
+        handlebars_tag_set = main.HandlebarTagSet(
+            if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST, "myList.[0]"},
+            each_tags=self.empty_set,
+            with_tags=self.empty_set,
+        )
+        whitespace_config = main.HandlebarsWhitespaceConfig()
+        out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
+            in_txt,
+            handlebars_tag_set,
+            whitespace_config,
+        )
+        expected_out_txt = "\n".join(
+            [
+                "{{myList.[0]}}{{{myList.[0]}}}",
+            ]
+        )
+        expected_ambiguous_tags = self.empty_set
         self.assertEqual(out_txt, expected_out_txt)
         self.assertEqual(ambiguous_tags, expected_ambiguous_tags)
 
@@ -232,8 +287,8 @@ class TestHelpers(unittest.TestCase):
         )
         handlebars_tag_set = main.HandlebarTagSet(
             if_tags={main.HANDLEBARS_FIRST, main.HANDLEBARS_LAST},
-            each_tags=set(),
-            with_tags=set(),
+            each_tags=self.empty_set,
+            with_tags=self.empty_set,
         )
         whitespace_config = main.HandlebarsWhitespaceConfig()
         out_txt, ambiguous_tags = main._convert_handlebars_to_mustache(
@@ -287,7 +342,7 @@ class TestHelpers(unittest.TestCase):
                 "{{/with}}{{/if}}",
             ]
         )
-        expected_ambiguous_tags = set()
+        expected_ambiguous_tags = self.empty_set
         self.assertEqual(out_txt, expected_out_txt)
         self.assertEqual(ambiguous_tags, expected_ambiguous_tags)
 
