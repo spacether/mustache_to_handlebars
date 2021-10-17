@@ -152,13 +152,13 @@ def __get_args():
         help=__list_of_string_help,
     )
     parser.add_argument(
-        "-keep_whitespace_before_open", default=False, action="store_true"
+        "-remove_whitespace_before_open", default=False, action="store_true"
     )
     parser.add_argument(
         "-remove_whitespace_after_open", default=False, action="store_true"
     )
     parser.add_argument(
-        "-keep_whitespace_before_close", default=False, action="store_true"
+        "-remove_whitespace_before_close", default=False, action="store_true"
     )
     parser.add_argument(
         "-remove_whitespace_after_close", default=False, action="store_true"
@@ -434,9 +434,9 @@ def mustache_to_handlebars():
         with_tags=handlebars_with_tags,
     )
     whitespace_config = HandlebarsWhitespaceConfig(
-        remove_whitespace_before_open=not args.keep_whitespace_before_open,
+        remove_whitespace_before_open=args.remove_whitespace_before_open,
         remove_whitespace_after_open=args.remove_whitespace_after_open,
-        remove_whitespace_before_close=not args.keep_whitespace_before_close,
+        remove_whitespace_before_close=args.remove_whitespace_before_close,
         remove_whitespace_after_close=args.remove_whitespace_after_close,
     )
     input_files_used_to_make_output_files, ambiguous_tags = _create_files(

@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='mustache_to_handlebars',
-      version='0.97',
+      version='0.98',
       description='converts mustache to handlebars templates',
       author='Justin Black',
       url='https://github.com/spacether/mustache_to_handlebars',
